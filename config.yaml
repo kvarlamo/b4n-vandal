@@ -1,8 +1,9 @@
 orc: [10.0.0.1, 10.0.0.2]
-iterators:
-    x: range(1,100)
-    y: range(1,100)
-    z: range(1,100)
+# use any
+vars:
+    x: "[100, 101, 102]"
+    y: "range(1,10)"
+    z: "range(1,10)"
 
 # p2p and p2m rotated x*y*z times
 p2p:
