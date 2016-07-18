@@ -1,9 +1,10 @@
 #!/usr/bin/env python2.7
 import yaml, argparse, pprint, logging, re, os
 from pprint import pprint,pformat
+from lib.ctlapi import *
 #logging.basicConfig(format = u'%(filename)s:%(lineno)d %(message)s', level=logging.INFO)
 logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
-logger=logging.getLogger("log")
+logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
 
 def parse_args():
@@ -36,6 +37,5 @@ if __name__ == '__main__':
     args, config = parse_args()
     logger.debug("args: %s, config: %s", pformat(args), pformat(config))
     resolve_vars(config)
-#    for varname in config['vars']:
-#        exec(varname + " = " + (config['vars'][varname]))
-#    logger.debug(secvlan)
+    c = CtlAPI('http://10.255.148.110:8080/', 'admin', 'admin', logger=logger)
+    print c.get_switches_of_cluster('578cc82b0f62c443cf9055ab')
