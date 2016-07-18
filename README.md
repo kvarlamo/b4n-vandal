@@ -1,4 +1,10 @@
 #B4N vandal
-Scripts for tests and routine tasks for Brain4Net. Inc. products.
+Script for configuring and testing Brain4Net. Inc. controller.
 **This is absolutely unuseful for anybody outside Brain4Net Inc. engineers**
+## Prerequisites
+
+Pyaml python module
+
+	pip install PyYAML
+
 
