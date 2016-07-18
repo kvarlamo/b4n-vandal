@@ -1,38 +1,32 @@
-orc: [10.0.0.1, 10.0.0.2]
-# use any
-vars:
-    x: "[100, 101, 102]"
-    y: "range(1,10)"
-    z: "range(1,10)"
+orc: 10.0.0.1
 
-# p2p and p2m rotated x*y*z times
+vars:
+    x: 1-5
+    y: 1-10
+
 p2p:
-    name: p2p_$x
+    name: p2p_$x_$y
     si:
         -
-            switch: 1
+            switch: sw1
             port: 2
-            tagType: 3
             vlan: $x
             secondVlan: $y
         -
-            switch: 1
+            switch: sw2
             port: 2
-            tagType: 3
             vlan: $x
             secondVlan: $y
 p2m:
-    name: p2m_$x
+    name: p2m_$x_$y
     si:
         -
-            switch: 1
+            switch: sw3
             port: 2
-            tagType: 3
-            vlan: 1-100
-            secondVlan: 2-4
+            vlan: $x
+            secondVlan: $y
         -
-            switch: 1
+            switch: sw4
             port: 2
-            tagType: 3
-            vlan: 1-100
-            secondVlan: 2-4
+            vlan: $x
+            secondVlan: $y

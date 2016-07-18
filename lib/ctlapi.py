@@ -8,8 +8,12 @@ class CtlAPI:
     def __init__(self, baseurl, login, password, **kwargs):
         if 'logger' in kwargs:
             self.logger=kwargs['logger']
+            logging.getLogger("requests").setLevel(self.logger.level)
+            logging.getLogger("urllib3").setLevel(self.logger.level)
         else:
             self.logger=logger
+            logging.getLogger("requests").setLevel(logging.WARNING)
+            logging.getLogger("urllib3").setLevel(logging.WARNING)
         self.baseurl = baseurl
         self.login = login
         self.password = password
@@ -54,4 +58,4 @@ class CtlAPI:
     def get_clusters(self):
         return self.get('api/clusters')
     def get_switches_of_cluster(self, cluster_id):
-        return self.get("api/cluster/%s/commutators?page=1&size=15" % cluster_id)
+        return self.get("api/cluster/%s/commutators?page=1&size=15" % cluster_id)['content']
