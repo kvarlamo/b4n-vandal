@@ -1,10 +1,16 @@
-orc: 10.0.0.1
+orc:
+    url: http://10.255.148.110:8080/
+    user: admin
+    pass: admin
 
+# you can define any variable in 'vars' section
+# 1-5 resolves to the 1,2,3,4,5 sequence
 vars:
     x: 1-5
     y: 1-10
-    z: 1-90
+    # you can add your own vars if you need
 
+# reference defined var by $name
 p2p:
     name: p2p_$x_$y
     si:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python2.7
-import yaml, argparse, pprint, logging, re, os, itertools
+import yaml, argparse, pprint, logging, re, os, itertools, copy
 from pprint import pprint,pformat
 from lib.ctlapi import *
-logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
+logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.DEBUG)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
 CFG_VAR_SECTION='vars'
@@ -88,20 +88,63 @@ def config_get_template_sections(config,*args):
             result_config[sec]=config[sec]
     return result_config
 
+def eval_configtemplate_to_configs(config, config_values):
+    configs = []
+    logger.info("Evaluating config templates with vars to configs with exact values")
+    for item in config_values:
+        configtemplate = copy.deepcopy(config)
+        evaluated_config=evaluate_config(configtemplate, **item)
+        logger.debug("%s resolved to %s", item, evaluated_config)
+        configs.append(evaluated_config)
+    return configs
+
+# returns list of switches, parent (Phy) ifaces and SIs ifaces from config
+def get_all_ifaces(configs):
+    all_parent_ifaces=[]
+    all_sis=[]
+    switches=[]
+    sis=[]
+    parent_ifaces = []
+    for cfg in configs:
+        for sect in cfg.keys():
+            if 'si' in cfg[sect].keys():
+                all_sis.extend(cfg[sect]['si'])
+                for item in cfg[sect]['si']:
+                    all_parent_ifaces.append({'switch':item['switch'],'port':item['port']})
+                    switches.append(item['switch'])
+    for i in all_sis:
+        if i in sis:
+            logger.warning("configured SIs not unique. %s SIs overlap", i)
+        else:
+            sis.append(i)
+    for i in all_parent_ifaces:
+        if i not in parent_ifaces:
+            parent_ifaces.append(i)
+    switches=list(set(switches))
+    logger.debug("SIs: %s, ParentIfs: %s, Switches %s", len(sis), len(parent_ifaces), len(switches))
 
 
 
 
 if __name__ == '__main__':
+    #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
     args, config = parse_args()
     logger.debug("args: %s, config: %s", pformat(args), pformat(config))
-    pprint(config)
+    logger.debug("Original config loaded from file :\n%s",pformat(config))
+    #resolve to lists
     config=config_var_str_to_lists(config)
-    pprint(config)
+    logger.debug("Config with resolved math shortcuts :\n%s", pformat(config))
     config_combs=cartesian_prod(config[CFG_VAR_SECTION])
     logger.info("Generated combinations:\n%s", pformat(config_combs))
     logger.info("Length of generated combinations: %s items", len(config_combs))
-    pprint(config_get_template_sections(config,'p2p', 'p2m'))
+    logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
+    # TODO
+    tpl_config=config_get_template_sections(config,'p2p', 'p2m')
+    logger.debug("Config template:\n%s ", pformat(tpl_config))
+    composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
+    logger.info("Composed configs contain: %s records", len(composed_configs))
+    logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
+    get_all_ifaces(composed_configs)
     #pprint (itertools.product([{'x': 'a'},{'x': 'b'}],[{'y': 'a'},{'y': 'b'}]))
     #config=evaluate_config(config, **{'x':1, 'y':2})
     #pprint(config)
