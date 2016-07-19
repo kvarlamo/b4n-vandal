@@ -8,7 +8,6 @@ orc:
 vars:
     x: 130-131
     y: 140-141
-    z: 150-151
     # you can add your own vars if you need
 
 # reference defined var by $name
@@ -24,7 +23,7 @@ p2p:
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $y+200
+                vlan: $x+200
                 secondVlan: $y
     -
         name: p2p_$x_$y
@@ -32,7 +31,7 @@ p2p:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $z+300
+                vlan: $x+300
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
@@ -46,12 +45,12 @@ p2m:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $y+500
+                vlan: $x+500
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $z+600
+                vlan: $x+600
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
@@ -64,12 +63,12 @@ p2m:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $y+800
+                vlan: $x+800
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $z+900
+                vlan: $x+900
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
