@@ -12,28 +12,66 @@ vars:
 
 # reference defined var by $name
 p2p:
-    name: p2p_$x_$y
-    si:
-        -
-            switch: sw1
-            port: 2
-            vlan: $x
-            secondVlan: $y
-        -
-            switch: sw2
-            port: 2
-            vlan: $x
-            secondVlan: $y
+    -
+        name: p2p_$x_$y
+        si:
+            -
+                switch: EdgeCore5610-100
+                port: 4
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-101
+                port: 4
+                vlan: $x
+                secondVlan: $y
+    -
+        name: p2p_$x_$y
+        si:
+            -
+                switch: EdgeCore5610-99
+                port: 1
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-101
+                port: 4
+                vlan: $x
+                secondVlan: $y
 p2m:
-    name: p2m_$x_$y
-    si:
-        -
-            switch: sw3
-            port: 2
-            vlan: $x
-            secondVlan: $y
-        -
-            switch: sw4
-            port: 2
-            vlan: $x
-            secondVlan: $y
+    -
+        name: p2m_$x_$y
+        si:
+            -
+                switch: EdgeCore5610-99
+                port: 1
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-101
+                port: 4
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-100
+                port: 4
+                vlan: $x
+                secondVlan: $y
+    -
+        name: p2m_$x_$y
+        si:
+            -
+                switch: EdgeCore5610-99
+                port: 1
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-101
+                port: 4
+                vlan: $x
+                secondVlan: $y
+            -
+                switch: EdgeCore5610-100
+                port: 4
+                vlan: $x
+                secondVlan: $y

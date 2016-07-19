@@ -99,19 +99,22 @@ def eval_configtemplate_to_configs(config, config_values):
     return configs
 
 # returns list of switches, parent (Phy) ifaces and SIs ifaces from config
-def get_all_ifaces(configs):
+def get_unique_sets(configs):
+    logger.info("Extract unique values and analyse resolved config for correctness (SIs should not overlap)")
     all_parent_ifaces=[]
     all_sis=[]
+    all_switches = []
     switches=[]
     sis=[]
     parent_ifaces = []
     for cfg in configs:
         for sect in cfg.keys():
-            if 'si' in cfg[sect].keys():
-                all_sis.extend(cfg[sect]['si'])
-                for item in cfg[sect]['si']:
-                    all_parent_ifaces.append({'switch':item['switch'],'port':item['port']})
-                    switches.append(item['switch'])
+            for svclist in cfg[sect]:
+                if 'si' in svclist.keys():
+                    all_sis.extend(svclist['si'])
+                    for item in svclist['si']:
+                        all_parent_ifaces.append({'switch':item['switch'],'port':item['port']})
+                        all_switches.append(item['switch'])
     for i in all_sis:
         if i in sis:
             logger.warning("configured SIs not unique. %s SIs overlap", i)
@@ -120,11 +123,41 @@ def get_all_ifaces(configs):
     for i in all_parent_ifaces:
         if i not in parent_ifaces:
             parent_ifaces.append(i)
-    switches=list(set(switches))
-    logger.debug("SIs: %s, ParentIfs: %s, Switches %s", len(sis), len(parent_ifaces), len(switches))
+    for i in all_switches:
+        if {'name':i} not in switches:
+            switches.append({'name':i})
+    logger.debug("Unique SIs: \n%s\n Unique ParentIfs: \n%s\n Unique Switches \n%s\n", sis, parent_ifaces, switches)
+    logger.info("Unique SIs: %s, Unique ParentIfs: %s, Unique Switches %s", len(sis), len(parent_ifaces), len(switches))
+    return({'switches':switches,'sis':sis,'parent_ifaces':parent_ifaces})
 
-
-
+# Check if switches really online and have referenced ports
+def check_switches(uniq,actual_switches):
+    res_uniq={'switches':[],'parent_ifaces':[]}
+    for uniq_sw in uniq['switches']:
+        for act_sw in actual_switches:
+            if uniq_sw['name'] == act_sw['name']:
+                if act_sw['connectionStatus'] == 'CONNECTED':
+                    logger.debug("%s exists in topology and Connected",uniq_sw['name'])
+                    res_uniq['switches'].append({'name':uniq_sw['name'], 'id': act_sw['id']})
+                    #checking ports
+                    for parentif_obj in uniq['parent_ifaces']:
+                        if parentif_obj['switch'] == act_sw['name']:
+                            for act_external_port in act_sw['classifiedPortExternal']:
+                                if parentif_obj['port'] == act_external_port['number']:
+                                    logger.debug("Port %s on sw %s OK", parentif_obj['port'], uniq_sw['name'])
+                                    res_uniq['parent_ifaces'].append({'switch':uniq_sw['name'],'port':parentif_obj['port']})
+                                    break
+                            else:
+                                logger.warning("Port %s on sw %s not found", parentif_obj['port'], uniq_sw['name'])
+                else:
+                    logger.warning("%s is in topology, but not up" % uniq_sw['name'])
+                break
+        else:
+            logger.warning("%s not found in topology" % uniq_sw['name'])
+            # TODO uncomment raise
+            #raise(Exception("switch %s not found in topology" % uniq_sw['name']))
+    pprint(res_uniq)
+    return res_uniq
 
 if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
@@ -144,19 +177,16 @@ if __name__ == '__main__':
     composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
     logger.info("Composed configs contain: %s records", len(composed_configs))
     logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
-    get_all_ifaces(composed_configs)
-    #pprint (itertools.product([{'x': 'a'},{'x': 'b'}],[{'y': 'a'},{'y': 'b'}]))
-    #config=evaluate_config(config, **{'x':1, 'y':2})
-    #pprint(config)
-    #rotate(config['vars'])
-    exit()
-    #resolve_config(config)
-    exit()
-    c = CtlAPI('http://10.255.148.110:8080/', 'admin', 'admin', logger=logger)
+    uniq=get_unique_sets(composed_configs)
+    # begin interaction with orc
+    c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
     clusters=(c.get_clusters())
     logger.debug("Got clusters: %s", clusters)
     if len(clusters)<1:
         raise(Exception, "Clusters are not configured")
     logger.debug("Number of clusters: %s", len(clusters))
+    if len(clusters) > 1:
+        logger.warning("There is more than one cluster! We hope we are in luck")
     switches=c.get_switches_of_cluster(clusters[0]['id'])
-    logger.debug("Got switches: %s", switches)
+    logger.debug("Got switches: %s", pformat(switches))
+    check_switches(uniq,switches)
