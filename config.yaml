@@ -3,6 +3,7 @@ orc: 10.0.0.1
 vars:
     x: 1-5
     y: 1-10
+    z: 1-90
 
 p2p:
     name: p2p_$x_$y

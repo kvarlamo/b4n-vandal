@@ -1,9 +1,7 @@
 #!/usr/bin/env python2.7
-import yaml, argparse, pprint, logging, re, os
+import yaml, argparse, pprint, logging, re, os, itertools
 from pprint import pprint,pformat
-from string import Template
 from lib.ctlapi import *
-#logging.basicConfig(format = u'%(filename)s:%(lineno)d %(message)s', level=logging.INFO)
 logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
@@ -53,17 +51,33 @@ def evaluate_str_var(eval_str, **kwargs):
         eval_str=eval_str.replace("$"+key, str(kwargs[key]))
     return eval_str
 
-def resolve_config(config):
-    result={'switches':{},'sistpl':[],'services':{}}
-    for si in config['p2p']['si']:
-        result['switches'][si['switch']]={}
-        result['sistpl'].append(si)
-    for si in config['p2m']['si']:
-        result['switches'][si['switch']]={}
-        result['sistpl'].append(si)
-    #walk(result)
-    #pprint(result)
+def make_list_from_dict(input_dict):
+    l=[]
+    keys = input_dict.keys()
+    keys.sort()
+    for key in keys:
+        d={}
+        for val in input_dict[key]:
+            d[key]=val
+            print "%s %s" % (key,val)
+            l.append(d.copy())
+    return l
 
+def cartesian_prod(*args):
+    print args
+    lst=[]
+    for i in args:
+        ikeys = i.keys()
+        ikeys.sort()
+        for k in ikeys:
+            lst.append(make_list_from_dict(i.fromkeys(k,i[k])))
+    list_of_joined_dicts=[]
+    for item in itertools.product(*lst):
+        joined_dict={}
+        for m in item:
+            joined_dict.update(m)
+        list_of_joined_dicts.append(joined_dict)
+    return list_of_joined_dicts
 
 
 
@@ -75,8 +89,11 @@ if __name__ == '__main__':
     pprint(config)
     config=config_var_str_to_lists(config)
     pprint(config)
-    config=evaluate_config(config, **{'x':1, 'y':2})
-    pprint(config)
+    pprint(cartesian_prod(config['vars']))
+    #pprint (itertools.product([{'x': 'a'},{'x': 'b'}],[{'y': 'a'},{'y': 'b'}]))
+    #config=evaluate_config(config, **{'x':1, 'y':2})
+    #pprint(config)
+    #rotate(config['vars'])
     exit()
     #resolve_config(config)
     exit()
