@@ -5,7 +5,8 @@ from lib.ctlapi import *
 logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
-logger.setLevel(logging.DEBUG)
+CFG_VAR_SECTION='vars'
+CFG_TEMPLATE_SECTIONS=['p2m','p2p']
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -21,8 +22,8 @@ def parse_args():
 
 def config_var_str_to_lists(config):
     # processes var section of config and evaluates strings X-Y to lists
-    for var in config['vars'].keys():
-        config['vars'][var]=evaluate_str_range(config['vars'][var])
+    for var in config[CFG_VAR_SECTION].keys():
+        config[CFG_VAR_SECTION][var]=evaluate_str_range(config[CFG_VAR_SECTION][var])
     return config
 
 def evaluate_config(cfg, **kwargs):
@@ -79,6 +80,14 @@ def cartesian_prod(*args):
         list_of_joined_dicts.append(joined_dict)
     return list_of_joined_dicts
 
+def config_get_template_sections(config,*args):
+    #get only template sections from config
+    result_config={}
+    for sec in config.keys():
+        if sec in args:
+            result_config[sec]=config[sec]
+    return result_config
+
 
 
 
@@ -89,7 +98,10 @@ if __name__ == '__main__':
     pprint(config)
     config=config_var_str_to_lists(config)
     pprint(config)
-    pprint(cartesian_prod(config['vars']))
+    config_combs=cartesian_prod(config[CFG_VAR_SECTION])
+    logger.info("Generated combinations:\n%s", pformat(config_combs))
+    logger.info("Length of generated combinations: %s items", len(config_combs))
+    pprint(config_get_template_sections(config,'p2p', 'p2m'))
     #pprint (itertools.product([{'x': 'a'},{'x': 'b'}],[{'y': 'a'},{'y': 'b'}]))
     #config=evaluate_config(config, **{'x':1, 'y':2})
     #pprint(config)
