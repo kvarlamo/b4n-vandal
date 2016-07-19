@@ -50,6 +50,10 @@ def evaluate_str_var(eval_str, **kwargs):
     # replaces $var to kwargs key value
     for key in kwargs.keys():
         eval_str=eval_str.replace("$"+key, str(kwargs[key]))
+        try:
+            eval_str=str(eval(eval_str))
+        except:
+            pass
     return eval_str
 
 def make_list_from_dict(input_dict):

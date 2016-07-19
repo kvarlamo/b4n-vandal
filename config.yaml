@@ -6,8 +6,9 @@ orc:
 # you can define any variable in 'vars' section
 # 1-5 resolves to the 1,2,3,4,5 sequence
 vars:
-    x: 1-5
-    y: 1-10
+    x: 130-131
+    y: 140-141
+    z: 150-151
     # you can add your own vars if you need
 
 # reference defined var by $name
@@ -18,12 +19,12 @@ p2p:
             -
                 switch: EdgeCore5610-100
                 port: 4
-                vlan: $x
+                vlan: $x+100
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $x
+                vlan: $y+200
                 secondVlan: $y
     -
         name: p2p_$x_$y
@@ -31,12 +32,12 @@ p2p:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $x
+                vlan: $z+300
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $x
+                vlan: $x+400
                 secondVlan: $y
 p2m:
     -
@@ -45,17 +46,17 @@ p2m:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $x
+                vlan: $y+500
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $x
+                vlan: $z+600
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
                 port: 4
-                vlan: $x
+                vlan: $x+700
                 secondVlan: $y
     -
         name: p2m_$x_$y
@@ -63,15 +64,15 @@ p2m:
             -
                 switch: EdgeCore5610-99
                 port: 1
-                vlan: $x
+                vlan: $y+800
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
                 port: 4
-                vlan: $x
+                vlan: $z+900
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
                 port: 4
-                vlan: $x
+                vlan: $x+1000
                 secondVlan: $y
