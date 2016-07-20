@@ -4,7 +4,7 @@ orc:
     pass: admin
 
 # you can define any variable in 'vars' section
-# 1-5 resolves to the 1,2,3,4,5 sequence
+# 1::5 resolves to the 1,2,3,4,5 sequence
 vars:
     x: 230::250
     y: 540::550
