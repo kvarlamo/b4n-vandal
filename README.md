@@ -25,7 +25,7 @@ Configure network via orchestrator
 
 YAML-based config divided into sections (dictionaries)
 
-### ORCHESTRATOR settings: orc
+### Orchestrator settings: orc
 * url
 * user
 * pass
