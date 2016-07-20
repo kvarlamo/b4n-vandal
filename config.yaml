@@ -44,7 +44,7 @@ p2m:
         si:
             -
                 switch: EdgeCore5610-99
-                port: 1
+                port: 3
                 vlan: $x+500
                 secondVlan: $y
             -
@@ -62,7 +62,7 @@ p2m:
         si:
             -
                 switch: EdgeCore5610-99
-                port: 1
+                port: 3
                 vlan: $x+800
                 secondVlan: $y
             -
