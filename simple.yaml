@@ -1,46 +1,43 @@
+# 2 P2Ps and 1 M2M per 50 iterations
+# = 150 services total
 orc:
     url: http://127.0.0.1:8080/
     user: admin
     pass: admin
 
-# you can define any variable in 'vars' section
-# 1::5 resolves to the 1,2,3,4,5 sequence
 vars:
-    x: 230::231
-    y: 540::541
-    # you can add your own vars if you need
+    x: 100::150
 
-# reference defined var by $name
 p2p:
     -
-        name: p2p_$x_$y
+        name: p2p_$x_A
         si:
             -
                 switch: EdgeCore5610-100
                 port: 3
                 vlan: $x+100
-                secondVlan: $y
+                secondVlan: 10
             -
                 switch: EdgeCore5610-101
                 port: 3
                 vlan: $x+200
-                secondVlan: $y
+                secondVlan: 11
     -
-        name: p2p_$x_$y
+        name: p2p_$x_B
         si:
             -
                 switch: EdgeCore5610-99
                 port: 3
                 vlan: $x+300
-                secondVlan: $y
+                secondVlan: 12
             -
                 switch: EdgeCore5610-101
                 port: 3
                 vlan: $x+400
-                secondVlan: $y
+                secondVlan: 13
 m2m:
     -
-        name: m2m_$x_$y
+        name: m2m_$x
         si:
             -
                 switch: EdgeCore5610-99
@@ -57,23 +54,4 @@ m2m:
                 switch: EdgeCore5610-100
                 port: 3
                 vlan: $x+700
-                secondVlan: $y
-    -
-        name: m2m_$x_$y
-        si:
-            -
-                switch: EdgeCore5610-99
-                port: 3
-                vlan: $x+800
-                secondVlan: $y
-            -
-                switch: EdgeCore5610-101
-                port: 3
-                vlan: $x+900
-                secondVlan: $y
-                defaultInterface: True
-            -
-                switch: EdgeCore5610-100
-                port: 3
-                vlan: $x+1000
                 secondVlan: $y
