@@ -286,7 +286,7 @@ if __name__ == '__main__':
     logger.info("Length of generated combinations: %s items", len(config_combs))
     logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
     # TODO
-    tpl_config=config_get_template_sections(config,SUPPORTED_SERVICES)
+    tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
     logger.debug("Config template:\n%s ", pformat(tpl_config))
     composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
     logger.info("Composed configs contain: %s records", len(composed_configs))

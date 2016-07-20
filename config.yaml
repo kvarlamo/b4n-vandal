@@ -1,5 +1,5 @@
 orc:
-    url: http://10.255.148.110:8080/
+    url: http://127.0.0.1:8080/
     user: admin
     pass: admin
 
@@ -17,12 +17,12 @@ p2p:
         si:
             -
                 switch: EdgeCore5610-100
-                port: 4
+                port: 3
                 vlan: $x+100
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
-                port: 4
+                port: 3
                 vlan: $x+200
                 secondVlan: $y
     -
@@ -30,12 +30,12 @@ p2p:
         si:
             -
                 switch: EdgeCore5610-99
-                port: 1
+                port: 3
                 vlan: $x+300
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
-                port: 4
+                port: 3
                 vlan: $x+400
                 secondVlan: $y
 p2m:
@@ -49,12 +49,12 @@ p2m:
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
-                port: 4
+                port: 3
                 vlan: $x+600
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
-                port: 4
+                port: 3
                 vlan: $x+700
                 secondVlan: $y
     -
@@ -67,11 +67,11 @@ p2m:
                 secondVlan: $y
             -
                 switch: EdgeCore5610-101
-                port: 4
+                port: 3
                 vlan: $x+900
                 secondVlan: $y
             -
                 switch: EdgeCore5610-100
-                port: 4
+                port: 3
                 vlan: $x+1000
                 secondVlan: $y
