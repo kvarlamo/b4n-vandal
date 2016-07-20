@@ -292,7 +292,7 @@ def add_services_with_sis(flat_services_config):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
     for n_svc in range(len(norm_svcs)):
-        logger.info("Adding service %s/%s (%s%%)",n_svc,len(norm_svcs),int(n_svc/len(norm_svcs)*100))
+        logger.info("Adding service %s/%s (%s%%)",n_svc+1,len(norm_svcs),int(((n_svc+1)/len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
             c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
             ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
