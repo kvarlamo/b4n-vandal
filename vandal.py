@@ -343,7 +343,7 @@ if __name__ == '__main__':
     else:
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-
+    exit()
     delete_all_services_with_sis()
     add_services_with_sis(flat_cfg)
 
