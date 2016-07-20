@@ -32,7 +32,7 @@ def compose_config(config):
     tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
     logger.debug("Config template:\n%s ", pformat(tpl_config))
     composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
-    logger.info("Composed configs contain: %s services", len(composed_configs))
+    logger.info("Composed configs contain: %s tuples (vars combinations)", len(composed_configs))
     logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
     uniq=get_unique_sets(composed_configs)
     flat_cfg = flatten_composed_configs(composed_configs)
