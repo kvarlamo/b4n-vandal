@@ -6,8 +6,8 @@ orc:
 # you can define any variable in 'vars' section
 # 1::5 resolves to the 1,2,3,4,5 sequence
 vars:
-    x: 230::250
-    y: 540::550
+    x: 230::231
+    y: 540::541
     # you can add your own vars if you need
 
 # reference defined var by $name
@@ -38,7 +38,7 @@ p2p:
                 port: 3
                 vlan: $x+400
                 secondVlan: $y
-p2m:
+m2m:
     -
         name: p2m_$x_$y
         si:
@@ -47,6 +47,7 @@ p2m:
                 port: 3
                 vlan: $x+500
                 secondVlan: $y
+                defaultInterface: True
             -
                 switch: EdgeCore5610-101
                 port: 3
@@ -70,6 +71,7 @@ p2m:
                 port: 3
                 vlan: $x+900
                 secondVlan: $y
+                defaultInterface: True
             -
                 switch: EdgeCore5610-100
                 port: 3

@@ -32,7 +32,7 @@ def compose_config(config):
     tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
     logger.debug("Config template:\n%s ", pformat(tpl_config))
     composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
-    logger.info("Composed configs contain: %s records", len(composed_configs))
+    logger.info("Composed configs contain: %s services", len(composed_configs))
     logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
     uniq=get_unique_sets(composed_configs)
     flat_cfg = flatten_composed_configs(composed_configs)
@@ -232,6 +232,15 @@ def normalize_services(svc):
                "qos": qos['id']}
             pprint(s)
             newsvc.append(s)
+        elif s['type']=='m2m':
+            s['obj'] = {
+                "sessionIdleTimeout": 10,
+                "tunnelIdleTimeout": 60,
+                "macIdleTimeout": 300,
+                "macTableSize": 100,
+                "rows": []}
+            pprint(s)
+            newsvc.append(s)
         else:
             pass
     return newsvc
@@ -255,6 +264,12 @@ def normalize_interfaces(svc):
     if svc['type']=='p2p':
         svc['obj']['src'] = svc['si'][0]['id']
         svc['obj']['dst'] = svc['si'][1]['id']
+    elif svc['type']=='m2m':
+        for si in svc['si']:
+            if "defaultInterface" not in si.keys():
+                si["defaultInterface"]=False
+            si['qos']=qos
+            svc['obj']['rows'].append(si)
     return(svc)
 
 def get_si_by_object(obj):
@@ -272,13 +287,16 @@ def add_services_with_sis(flat_services_config):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
     for n_svc in range(len(norm_svcs)):
-        logger.info("Adding service %s/%s (%s\%%)",n_svc,len(norm_svcs),int(n_svc/len(norm_svcs)*100))
+        logger.info("Adding service %s/%s (%s%%)",n_svc,len(norm_svcs),int(n_svc/len(norm_svcs)*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
             c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
             ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
             norm_svcs[n_svc]['si'][ifacenum]['id']=ifaceid
         normalize_interfaces(norm_svcs[n_svc])
-        c.add_p2p_service(cluster_id,norm_svcs[n_svc]['obj'])
+        if norm_svcs[n_svc]['type']=='p2p':
+            c.add_p2p_service(cluster_id,norm_svcs[n_svc]['obj'])
+        elif norm_svcs[n_svc]['type']=='m2m':
+            c.add_m2m_service(cluster_id, norm_svcs[n_svc]['obj'])
     logger.info("Services created\n %s\n" % pformat(norm_svcs))
     return(norm_svcs)
 

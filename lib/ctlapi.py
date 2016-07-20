@@ -83,3 +83,5 @@ class CtlAPI:
         return self.post("api/cluster/%s/p2PTunnels" % cluster_id,obj)
     def del_p2p_service(self, cluster_id, obj):
         return self.delete("api/cluster/%s/p2PTunnels/%s" % (cluster_id, obj['id']))
+    def add_m2m_service(self,cluster_id, obj):
+        return self.post("api/cluster/%s/m2m" % cluster_id,obj)
