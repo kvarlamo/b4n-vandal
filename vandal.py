@@ -2,7 +2,7 @@
 import yaml, argparse, pprint, logging, re, os, itertools, copy
 from pprint import pprint,pformat
 from lib.ctlapi import *
-logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.DEBUG)
+logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
 CFG_VAR_SECTION='vars'
