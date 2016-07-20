@@ -20,6 +20,51 @@ def parse_args():
     config = yaml.safe_load(args.config)
     return (args, config)
 
+def compose_config(config):
+    logger.debug("Original config loaded from file :\n%s",pformat(config))
+    #resolve to lists
+    config=config_var_str_to_lists(config)
+    logger.debug("Config with resolved math shortcuts :\n%s", pformat(config))
+    config_combs=cartesian_prod(config[CFG_VAR_SECTION])
+    logger.info("Generated combinations:\n%s", pformat(config_combs))
+    logger.info("Length of generated combinations: %s items", len(config_combs))
+    logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
+    tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
+    logger.debug("Config template:\n%s ", pformat(tpl_config))
+    composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
+    logger.info("Composed configs contain: %s records", len(composed_configs))
+    logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
+    uniq=get_unique_sets(composed_configs)
+    flat_cfg = flatten_composed_configs(composed_configs)
+    return uniq, flat_cfg
+
+def validate_cfg_against_controller():
+    # begin interaction with orc
+    c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
+    clusters=c.get_clusters()
+    logger.debug("Got clusters: %s", clusters)
+    if len(clusters)<1:
+        raise(Exception, "Clusters are not configured")
+    logger.debug("Number of clusters: %s", len(clusters))
+    if len(clusters) > 1:
+        logger.warning("There is more than one cluster! We hope we are in luck")
+    cluster_id=clusters[0]['id']
+    logger.debug("Current cluster ID: %s", cluster_id)
+    qos_profiles = c.get_qos(clusters[0]['id'])
+    if len(qos_profiles) == 1:
+        logger.debug("QOS is already configured %s", qos_profiles)
+    elif len(qos_profiles) == 0:
+        logger.warning("QOS Rules not configured: %s", qos_profiles)
+    elif len(qos_profiles) > 1:
+        logger.warning("Multiple QOS Rules configured: %s", qos_profiles)
+        logger.warning("We-ll use first rule: %s", qos_profiles[0])
+    qos=qos_profiles[0]
+    logger.debug("Current QOS profile: %s", qos)
+    switches=c.get_switches_of_cluster(cluster_id)
+    logger.debug("Got switches: %s", pformat(switches))
+    check_switches(uniq,switches)
+    return c, cluster_id, qos, switches
+
 def config_var_str_to_lists(config):
     # processes var section of config and evaluates strings X-Y to lists
     for var in config[CFG_VAR_SECTION].keys():
@@ -277,46 +322,28 @@ if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
     args, config = parse_args()
     logger.debug("args: %s, config: %s", pformat(args), pformat(config))
-    logger.debug("Original config loaded from file :\n%s",pformat(config))
-    #resolve to lists
-    config=config_var_str_to_lists(config)
-    logger.debug("Config with resolved math shortcuts :\n%s", pformat(config))
-    config_combs=cartesian_prod(config[CFG_VAR_SECTION])
-    logger.info("Generated combinations:\n%s", pformat(config_combs))
-    logger.info("Length of generated combinations: %s items", len(config_combs))
-    logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
-    # TODO
-    tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
-    logger.debug("Config template:\n%s ", pformat(tpl_config))
-    composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
-    logger.info("Composed configs contain: %s records", len(composed_configs))
-    logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
-    uniq=get_unique_sets(composed_configs)
-    # begin interaction with orc
-    c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
-    clusters=c.get_clusters()
-    logger.debug("Got clusters: %s", clusters)
-    if len(clusters)<1:
-        raise(Exception, "Clusters are not configured")
-    logger.debug("Number of clusters: %s", len(clusters))
-    if len(clusters) > 1:
-        logger.warning("There is more than one cluster! We hope we are in luck")
-    cluster_id=clusters[0]['id']
-    logger.debug("Current cluster ID: %s", cluster_id)
-    qos_profiles = c.get_qos(clusters[0]['id'])
-    if len(qos_profiles) == 1:
-        logger.debug("QOS is already configured %s", qos_profiles)
-    elif len(qos_profiles) == 0:
-        logger.warning("QOS Rules not configured: %s", qos_profiles)
-    elif len(qos_profiles) > 1:
-        logger.warning("Multiple QOS Rules configured: %s", qos_profiles)
-        logger.warning("We-ll use first rule: %s", qos_profiles[0])
-    qos=qos_profiles[0]
-    logger.debug("Current QOS profile: %s", qos)
-    switches=c.get_switches_of_cluster(cluster_id)
-    logger.debug("Got switches: %s", pformat(switches))
-    check_switches(uniq,switches)
-    flat_cfg=flatten_composed_configs(composed_configs)
+    action=args.ACTION
+    #action="clear"
+    for action in args.ACTION:
+        if action=="validate-offline":
+            logger.info("Validating configuration offline.")
+            pass
+        if action=="validate":
+            logger.info("Validating configuration against controller. No changes will be enforced")
+            pass
+        if action=="clear":
+            logger.info("REMOVING ALL services and SIs from controller configuration")
+            pass
+        elif action=="del":
+            logger.info("REMOVING from controller configuration services and SIs listed in template")
+            pass
+        elif action=="add":
+            logger.info("Re-adding (REMOVING and ADDING) services and SIs listed in template")
+            pass
+    else:
+        uniq, flat_cfg = compose_config(config)
+        c, cluster_id, qos, switches = validate_cfg_against_controller()
+
     delete_all_services_with_sis()
     add_services_with_sis(flat_cfg)
 
