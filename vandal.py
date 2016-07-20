@@ -40,7 +40,7 @@ def evaluate_config(cfg, **kwargs):
 
 def evaluate_str_range(str):
     # evaluates string records X-Y to list [X .. Y]
-    m = re.search(r'^(\d+)\-(\d+)$',str)
+    m = re.search(r'^(\d+)::(\d+)$',str)
     if m:
         return range(int(m.group(1)),int(m.group(2))+1)
     else:
@@ -146,13 +146,16 @@ def check_switches(uniq,actual_switches):
                     #checking ports
                     for parentif_obj in uniq['parent_ifaces']:
                         if parentif_obj['switch'] == act_sw['name']:
-                            for act_external_port in act_sw['classifiedPortExternal']:
-                                if parentif_obj['port'] == act_external_port['number']:
-                                    logger.debug("Port %s on sw %s OK", parentif_obj['port'], uniq_sw['name'])
-                                    res_uniq['parent_ifaces'].append({'switch':uniq_sw['name'],'port':parentif_obj['port']})
-                                    break
-                            else:
-                                logger.warning("Port %s on sw %s not found", parentif_obj['port'], uniq_sw['name'])
+                            try:
+                                for act_external_port in act_sw['classifiedPortExternal']:
+                                    if parentif_obj['port'] == act_external_port['number']:
+                                        logger.debug("Port %s on sw %s OK", parentif_obj['port'], uniq_sw['name'])
+                                        res_uniq['parent_ifaces'].append({'switch':uniq_sw['name'],'port':parentif_obj['port']})
+                                        break
+                                else:
+                                    logger.warning("Port %s on sw %s not found", parentif_obj['port'], uniq_sw['name'])
+                            except TypeError:
+                                pass
                 else:
                     logger.warning("%s is in topology, but not up" % uniq_sw['name'])
                 break
@@ -166,7 +169,7 @@ def flatten_composed_configs(composedcfg):
     flatten=[]
     for i in composedcfg:
         for type in i.keys():
-            if type in ['p2p','p2m','m2m']:
+            if type in SUPPORTED_SERVICES:
                 for k in i[type]:
                     k['type']=type
                     flatten.append(k)
@@ -223,14 +226,14 @@ def get_si_by_object(obj):
 def add_services_with_sis(flat_services_config):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
-    for n_svc in norm_svcs:
-        # Adding SIS to the ORC and putting its id to si item
-        for ifacenum in range(len(n_svc['si'])):
-            c.add_si(cluster_id,n_svc['si'][ifacenum])
-            ifaceid=get_si_by_object(n_svc['si'][ifacenum])
-            n_svc['si'][ifacenum]['id']=ifaceid
-        normalize_interfaces(n_svc)
-        c.add_p2p_service(cluster_id,n_svc['obj'])
+    for n_svc in range(len(norm_svcs)):
+        logger.info("Adding service %s/%s (%s\%%)",n_svc,len(norm_svcs),int(n_svc/len(norm_svcs)*100))
+        for ifacenum in range(len(norm_svcs[n_svc]['si'])):
+            c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
+            ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
+            norm_svcs[n_svc]['si'][ifacenum]['id']=ifaceid
+        normalize_interfaces(norm_svcs[n_svc])
+        c.add_p2p_service(cluster_id,norm_svcs[n_svc]['obj'])
     logger.info("Services created\n %s\n" % pformat(norm_svcs))
     return(norm_svcs)
 
@@ -253,8 +256,9 @@ def get_all_sis_of_cluster():
     return ifs
 
 def delete_all_unused_sis(sis):
-    for si in sis:
-        c.del_si(si['id'])
+    for si in range(len(sis)):
+        logger.info("Delete SIs %s/%s",si,len(sis))
+        c.del_si(sis[si]['id'])
 
 # Delete all services and unused SIs
 def delete_all_services_with_sis():
@@ -282,7 +286,7 @@ if __name__ == '__main__':
     logger.info("Length of generated combinations: %s items", len(config_combs))
     logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
     # TODO
-    tpl_config=config_get_template_sections(config,'p2p', 'p2m')
+    tpl_config=config_get_template_sections(config,SUPPORTED_SERVICES)
     logger.debug("Config template:\n%s ", pformat(tpl_config))
     composed_configs=eval_configtemplate_to_configs(tpl_config,config_combs)
     logger.info("Composed configs contain: %s records", len(composed_configs))
