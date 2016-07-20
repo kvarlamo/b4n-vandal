@@ -12,7 +12,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=file, help='configuration file in YAML format', required=False, default=scriptdir+"/config.yaml", metavar='CONFIGFILE')
     parser.add_argument('-d', action='store_true', help='enable verbose debugging', required=False)
-    parser.add_argument('ACTION', nargs='*')
+    parser.add_argument('ACTION', nargs='?')
     args = parser.parse_args()
     if args.d:
         logger.setLevel(logging.DEBUG)
@@ -322,30 +322,32 @@ if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
     args, config = parse_args()
     logger.debug("args: %s, config: %s", pformat(args), pformat(config))
-    action=args.ACTION
-    #action="clear"
-    for action in args.ACTION:
-        if action=="validate-offline":
-            logger.info("Validating configuration offline.")
-            pass
-        if action=="validate":
-            logger.info("Validating configuration against controller. No changes will be enforced")
-            pass
-        if action=="clear":
-            logger.info("REMOVING ALL services and SIs from controller configuration")
-            pass
-        elif action=="del":
-            logger.info("REMOVING from controller configuration services and SIs listed in template")
-            pass
-        elif action=="add":
-            logger.info("Re-adding (REMOVING and ADDING) services and SIs listed in template")
-            pass
-    else:
+    action = args.ACTION
+    if action=="validate":
+        logger.info("Validating configuration against controller. No changes enforced")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-    exit()
-    delete_all_services_with_sis()
-    add_services_with_sis(flat_cfg)
+    elif action=="clear-all":
+        logger.info("REMOVING ALL services and SIs from controller configuration")
+        uniq, flat_cfg = compose_config(config)
+        c, cluster_id, qos, switches = validate_cfg_against_controller()
+        delete_all_services_with_sis()
+    elif action=="del":
+        logger.info("REMOVING from controller configuration services and SIs listed in template")
+        logger.info("NOT IMPLEMENTED YET. Does the same as clear-all")
+        uniq, flat_cfg = compose_config(config)
+        c, cluster_id, qos, switches = validate_cfg_against_controller()
+        delete_all_services_with_sis()
+    elif action=="add":
+        logger.info("Re-adding (REMOVING and ADDING) services and SIs listed in template")
+        logger.info("NOT IMPLEMENTED YET. TOTALLY REMOVES ALL SERVICES AND ADDS SIS from template")
+        uniq, flat_cfg = compose_config(config)
+        c, cluster_id, qos, switches = validate_cfg_against_controller()
+        delete_all_services_with_sis()
+        add_services_with_sis(flat_cfg)
+    else:
+        logger.warning("Your arg didn't match any action. Possible actions are\n\n validate\n clear-all\n del\n add\n")
+
 
     #c.add_si(clusters[0]['id'],{"commutatorId":"578e3ae00f62c443091cd101","port":4,"tagType":"VLAN","vlan":1111})
     #pprint(c.get_switch('578e3ae00f62c443091cd101'))
