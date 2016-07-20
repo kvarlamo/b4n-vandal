@@ -1,6 +1,8 @@
+**This code is absolutely unuseful for anybody outside Brain4Net Inc. engineering team**
+
 #B4N vandal
-Script for configuring and testing Brain4Net. Inc. controller services
-**This is absolutely unuseful for anybody outside Brain4Net Inc. engineers**
+Script for template-based configuring P2P, P2M, M2M services and corresponding SIs on Brain4Net controller.
+It parses and validates config and controller state, **REMOVES ALL EXISTING SERVICES AND SIS** and creates configured services.
 
 ## Prerequisites
 
@@ -20,7 +22,9 @@ Configure network via orchestrator
 * add QoS rule (script will use the first one)
 
 ## Configure
-config.yaml is default config. It divided into sections:
+
+YAML-based config divided into sections (dictionaries)
+
 ### ORCHESTRATOR settings: orc
 * url
 * user
@@ -36,23 +40,34 @@ You can reference variables defined in vars and apply simple math evaluations (s
 Good idea to add integers that don't allow services overlap.
 
 ## Run
-Make it executable
+
+### Clone from git
+    git clone https://github.com/kvarlamo/b4n-vandal.git
+    Cloning into 'b4n-vandal'...
+    remote: Counting objects: 66, done.
+    remote: Compressing objects: 100% (53/53), done.
+    remote: Total 66 (delta 30), reused 39 (delta 8), pack-reused 0
+    Unpacking objects: 100% (66/66), done.
+    Checking connectivity... done.
+    cd b4n-vandal
+
+### Make it executable
 
     chmod +x vandal.py
 
-Run and see built-in help
+### Run and see built-in help
 
     ./vandal.py -h
    
-Run with default config.yaml
+### Run with default config.yaml
 
     ./vandal.py
     
-Run with verbose logging:
+### Run with verbose logging:
 
     ./vandal.py -d
     
-Run with another config file:
+### Run with another config file:
 
     ./vandal.py --config=~/1.txt
 
