@@ -238,7 +238,8 @@ def normalize_services(svc):
                 "tunnelIdleTimeout": 60,
                 "macIdleTimeout": 300,
                 "macTableSize": 100,
-                "rows": []}
+                "rows": [],
+                "name": s['name']}
             pprint(s)
             newsvc.append(s)
         else:
@@ -266,10 +267,14 @@ def normalize_interfaces(svc):
         svc['obj']['dst'] = svc['si'][1]['id']
     elif svc['type']=='m2m':
         for si in svc['si']:
-            if "defaultInterface" not in si.keys():
-                si["defaultInterface"]=False
-            si['qos']=qos
-            svc['obj']['rows'].append(si)
+            new_si={}
+            if "defaultInterface" in si.keys():
+                new_si['defaultInterface'] = si['defaultInterface']
+            else:
+                new_si["defaultInterface"] = False
+            new_si['qos']=qos
+            new_si['si']=si['id']
+            svc['obj']['rows'].append(new_si)
     return(svc)
 
 def get_si_by_object(obj):
@@ -328,6 +333,8 @@ def delete_all_services_with_sis():
     svcs=get_all_services()
     for svc in svcs['p2p']:
         c.del_p2p_service(cluster_id,svc)
+    for svc in svcs['m2m']:
+        c.del_m2m_service(cluster_id,svc)
     all_sis=get_all_sis_of_cluster()
     delete_all_unused_sis(all_sis)
 
