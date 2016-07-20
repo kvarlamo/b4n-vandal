@@ -6,8 +6,8 @@ orc:
 # you can define any variable in 'vars' section
 # 1-5 resolves to the 1,2,3,4,5 sequence
 vars:
-    x: 130-131
-    y: 140-141
+    x: 230-250
+    y: 540-550
     # you can add your own vars if you need
 
 # reference defined var by $name

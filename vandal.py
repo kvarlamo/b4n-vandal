@@ -6,7 +6,7 @@ logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.DEBUG)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
 CFG_VAR_SECTION='vars'
-CFG_TEMPLATE_SECTIONS=['p2m','p2p']
+SUPPORTED_SERVICES=['p2m','p2p','m2m']
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -158,10 +158,116 @@ def check_switches(uniq,actual_switches):
                 break
         else:
             logger.warning("%s not found in topology" % uniq_sw['name'])
-            # TODO uncomment raise
-            #raise(Exception("switch %s not found in topology" % uniq_sw['name']))
-    pprint(res_uniq)
+            raise(Exception("switch %s not found in topology" % uniq_sw['name']))
     return res_uniq
+
+# make a single list of all services with type
+def flatten_composed_configs(composedcfg):
+    flatten=[]
+    for i in composedcfg:
+        for type in i.keys():
+            if type in ['p2p','p2m','m2m']:
+                for k in i[type]:
+                    k['type']=type
+                    flatten.append(k)
+            else:
+                logger.warning("Unknown service type %s", type)
+                raise(Exception("Unknown service type %s" % type))
+    return flatten
+
+def normalize_services(svc):
+    newsvc=[]
+    for s in svc:
+        if s['type']=='p2p':
+            s['obj']={"tunnelType": "STATIC", "pathfinding": "SHORTEST_PATH", "symmetry": "SYMMETRIC", "name": s['name'],
+               "src": None, "dst": None,
+               "qos": qos['id']}
+            pprint(s)
+            newsvc.append(s)
+        else:
+            pass
+    return newsvc
+
+def normalize_sis(svc):
+    #normalized_sis=[]
+    for s in svc:
+        for si in s['si']:
+            if 'secondVlan' in si.keys():
+                si['tagType']="DOUBLE_VLAN"
+            elif "vlan" in si.keys():
+                si['tagType'] ="VLAN"
+            else:
+                logger.warning("SI doesn't contain neither vlan nor second Vlan, so we can't assign tagType. UNTAGGED ifaces not supported")
+            si["commutatorId"]=get_switch_id_by_name(si['switch'])
+            del(si['switch'])
+    #normalized_sis.append(s)
+    return svc
+
+def normalize_interfaces(svc):
+    if svc['type']=='p2p':
+        svc['obj']['src'] = svc['si'][0]['id']
+        svc['obj']['dst'] = svc['si'][1]['id']
+    return(svc)
+
+def get_si_by_object(obj):
+    ports=c.get_switch(obj['commutatorId'])
+    for port in ports:
+        if port["port"] == obj["port"]:
+            if obj["tagType"] == "VLAN":
+                if str(port["vlan"]) == str(obj["vlan"]):
+                    return port['id']
+            elif obj["tagType"] == 'DOUBLE_VLAN':
+                if str(port["vlan"]) == str(obj["vlan"]) and str(port['secondVlan']) == str(obj['secondVlan']):
+                    return port['id']
+
+def add_services_with_sis(flat_services_config):
+    norm_sis = normalize_sis(flat_services_config)
+    norm_svcs = normalize_services(norm_sis)
+    for n_svc in norm_svcs:
+        # Adding SIS to the ORC and putting its id to si item
+        for ifacenum in range(len(n_svc['si'])):
+            c.add_si(cluster_id,n_svc['si'][ifacenum])
+            ifaceid=get_si_by_object(n_svc['si'][ifacenum])
+            n_svc['si'][ifacenum]['id']=ifaceid
+        normalize_interfaces(n_svc)
+        c.add_p2p_service(cluster_id,n_svc['obj'])
+    logger.info("Services created\n %s\n" % pformat(norm_svcs))
+    return(norm_svcs)
+
+def get_all_services():
+    existing_services={'p2p':[],'m2m':[],'p2m':[]}
+    existing_services['p2p'] = c.get_p2p_services(cluster_id)
+    existing_services['m2m'] = c.get_m2m_services(cluster_id)
+    existing_services['p2m'] = c.get_p2m_services(cluster_id)
+    for i in existing_services.keys():
+        if existing_services[i]==None:
+            existing_services[i]=[]
+    return existing_services
+
+def get_all_sis_of_cluster():
+    switches=c.get_switches_of_cluster(cluster_id)
+    ifs=[]
+    for sw in switches:
+        ifs.extend(c.get_switch(sw['id']))
+    pprint(ifs)
+    return ifs
+
+def delete_all_unused_sis(sis):
+    for si in sis:
+        c.del_si(si['id'])
+
+# Delete all services and unused SIs
+def delete_all_services_with_sis():
+    svcs=get_all_services()
+    for svc in svcs['p2p']:
+        c.del_p2p_service(cluster_id,svc)
+    all_sis=get_all_sis_of_cluster()
+    delete_all_unused_sis(all_sis)
+
+def get_switch_id_by_name(sw_name):
+    for switch in switches:
+        if switch['name']==sw_name:
+            return str(switch['id'])
 
 if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
@@ -184,13 +290,32 @@ if __name__ == '__main__':
     uniq=get_unique_sets(composed_configs)
     # begin interaction with orc
     c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
-    clusters=(c.get_clusters())
+    clusters=c.get_clusters()
     logger.debug("Got clusters: %s", clusters)
     if len(clusters)<1:
         raise(Exception, "Clusters are not configured")
     logger.debug("Number of clusters: %s", len(clusters))
     if len(clusters) > 1:
         logger.warning("There is more than one cluster! We hope we are in luck")
-    switches=c.get_switches_of_cluster(clusters[0]['id'])
+    cluster_id=clusters[0]['id']
+    logger.debug("Current cluster ID: %s", cluster_id)
+    qos_profiles = c.get_qos(clusters[0]['id'])
+    if len(qos_profiles) == 1:
+        logger.debug("QOS is already configured %s", qos_profiles)
+    elif len(qos_profiles) == 0:
+        logger.warning("QOS Rules not configured: %s", qos_profiles)
+    elif len(qos_profiles) > 1:
+        logger.warning("Multiple QOS Rules configured: %s", qos_profiles)
+        logger.warning("We-ll use first rule: %s", qos_profiles[0])
+    qos=qos_profiles[0]
+    logger.debug("Current QOS profile: %s", qos)
+    switches=c.get_switches_of_cluster(cluster_id)
     logger.debug("Got switches: %s", pformat(switches))
     check_switches(uniq,switches)
+    flat_cfg=flatten_composed_configs(composed_configs)
+    delete_all_services_with_sis()
+    add_services_with_sis(flat_cfg)
+
+    #c.add_si(clusters[0]['id'],{"commutatorId":"578e3ae00f62c443091cd101","port":4,"tagType":"VLAN","vlan":1111})
+    #pprint(c.get_switch('578e3ae00f62c443091cd101'))
+    #c.del_si("578e854a0f62c443091cd1c3")
