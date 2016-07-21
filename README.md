@@ -1,12 +1,9 @@
 **This code is absolutely unuseful for anybody outside Brain4Net Inc. engineering team**
 
 #B4N vandal
-Script for template-based configuring P2P, P2M, M2M services and corresponding SIs on Brain4Net controller.
-It parses and validates config and controller state, **REMOVES ALL EXISTING SERVICES AND SIS** and creates configured services.
+Script for templating P2P, P2M, M2M services on Brain4Net controller.
 
 ## Prerequisites
-
-You should have python2.X as interpreter. Python 3 not supported.
 
 Install python modules
 
@@ -17,29 +14,11 @@ Install python modules
 
 Configure network via orchestrator
 * add controller(s)
-* make cluster of controllers (script will use the first one)
+* make cluster of controllers
 * connect external interfaces referenced by configuration
 * add QoS rule (script will use the first one)
 
-## Configure
-
-YAML-based config divided into sections (dictionaries)
-
-### Orchestrator settings: orc
-* url
-* user
-* pass
-
-### Variables generator: vars
-You can define all vars and their ranges.
-Don't declare variables you don't use in services - each service runs over each combination. If you keep unused vars your services will overlap and script will be too slow.
-
-### Services sections: p2p, p2m, m2m
-Each service section consists of list of services of each type. Each service has its name and list of service interfaces
-You can reference variables defined in vars and apply simple math evaluations (see built-in eval function).
-Good idea to add integers that don't allow services overlap.
-
-## Run
+## Get 
 
 ### Clone from git
     git clone https://github.com/kvarlamo/b4n-vandal.git
@@ -51,23 +30,43 @@ Good idea to add integers that don't allow services overlap.
     Checking connectivity... done.
     cd b4n-vandal
 
-### Make it executable
+## Configure
 
-    chmod +x vandal.py
+Default config file is "config.yaml". You can point to any other file with --config option
+YAML-based config divided into sections (dictionaries). 
 
-### Run and see built-in help
+### Orchestrator settings section: orc
+* url
+* user
+* pass
+
+### Variables generator section: vars
+You can define any vars and their ranges.
+For most cases just one var will be enough.
+
+### Services sections: p2p, p2m, m2m
+Each service section consists of list of services of each type. Each service has its name and list of service interfaces
+You can reference variables defined in vars as $var and apply simple math evaluations $var+1 or Service_$var
+
+## Run
+
+### Run and read built-in help
 
     ./vandal.py -h
    
-### Run with default config.yaml
+### Start with default config and push it:
 
-    ./vandal.py
+    ./vandal.py add
     
-### Run with verbose logging:
+### The same with verbose logging:
 
-    ./vandal.py -d
+    ./vandal.py -d add
     
 ### Run with another config file:
 
-    ./vandal.py --config=~/1.txt
+    ./vandal.py --config=~/1.txt add
+    
+### Delete services and SIs:
+
+    ./vandal.py del
 
