@@ -10,6 +10,7 @@ logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
 CFG_VAR_SECTION='vars'
 SUPPORTED_SERVICES=['p2m','p2p','m2m']
+start_time=time.time()
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -424,7 +425,7 @@ if __name__ == '__main__':
         #add_services_with_sis(flat_cfg)
         #
         # TODO threading goes here - need to reuse
-        threads=5
+        threads=1
         q = Queue.Queue()
         flcfg_chunked=split_list_to_chunks(flat_cfg,threads)
         threads_obj = []

@@ -1,0 +1,29 @@
+orc:
+    url: http://127.0.0.1:8080/
+    user: admin
+    pass: admin
+
+vars:
+    x: 100::199
+
+p2m:
+    -
+        name: p2m_$x
+        si:
+            -
+                switch: EdgeCore5610-99
+                port: 1
+                vlan: $x+800
+                secondVlan: 14
+                defaultInterface: True
+                role: ROOT
+            -
+                switch: EdgeCore5610-101
+                port: 4
+                vlan: $x+900
+                secondVlan: 15
+            -
+                switch: EdgeCore5610-100
+                port: 4
+                vlan: $x+1000
+                secondVlan: 16
