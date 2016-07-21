@@ -1,7 +1,10 @@
 #!/usr/bin/env python2.7
-import yaml, argparse, pprint, logging, re, os, itertools, copy
+import yaml, argparse, pprint, logging, re, os, itertools, copy, time
 from pprint import pprint,pformat
+import Queue
+import threading
 from lib.ctlapi import *
+import signal, sys
 logging.basicConfig(format = u'%(levelname)s %(message)s', level=logging.INFO)
 logger=logging.getLogger(__name__)
 scriptdir=os.path.dirname(os.path.realpath(__file__))
@@ -26,7 +29,7 @@ def compose_config(config):
     config=config_var_str_to_lists(config)
     logger.debug("Config with resolved math shortcuts :\n%s", pformat(config))
     config_combs=cartesian_prod(config[CFG_VAR_SECTION])
-    logger.info("Generated combinations:\n%s", pformat(config_combs))
+    logger.debug("Generated combinations:\n%s", pformat(config_combs))
     logger.info("Length of generated combinations: %s items", len(config_combs))
     logger.debug("Config vars combinations are :\n%s", pformat(config_combs))
     tpl_config=config_get_template_sections(config,*SUPPORTED_SERVICES)
@@ -40,7 +43,10 @@ def compose_config(config):
 
 def validate_cfg_against_controller():
     # begin interaction with orc
+    logger.info("Validated generated configs against network configuration..")
+    logger.info("Conneting to Orchestrator %s", config['orc']['url'])
     c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
+    logger.info("Connected. Getting clusters")
     clusters=c.get_clusters()
     logger.debug("Got clusters: %s", clusters)
     if len(clusters)<1:
@@ -49,7 +55,8 @@ def validate_cfg_against_controller():
     if len(clusters) > 1:
         logger.warning("There is more than one cluster! We hope we are in luck")
     cluster_id=clusters[0]['id']
-    logger.debug("Current cluster ID: %s", cluster_id)
+    logger.info("Current cluster ID: %s", cluster_id)
+    logger.info("Checking if QoS configured - we need at least one profile")
     qos_profiles = c.get_qos(clusters[0]['id'])
     if len(qos_profiles) == 1:
         logger.debug("QOS is already configured %s", qos_profiles)
@@ -60,8 +67,10 @@ def validate_cfg_against_controller():
         logger.warning("We-ll use first rule: %s", qos_profiles[0])
     qos=qos_profiles[0]
     logger.debug("Current QOS profile: %s", qos)
+    logger.info("Getting switches configurations...")
     switches=c.get_switches_of_cluster(cluster_id)
     logger.debug("Got switches: %s", pformat(switches))
+    logger.info("%s switches there", len((switches)))
     check_switches(uniq,switches)
     return c, cluster_id, qos, switches
 
@@ -181,14 +190,15 @@ def get_unique_sets(configs):
 
 # Check if switches really online and have referenced ports
 def check_switches(uniq,actual_switches):
+    logger.info("Checking if switches really online and have referenced ports")
     res_uniq={'switches':[],'parent_ifaces':[]}
     for uniq_sw in uniq['switches']:
         for act_sw in actual_switches:
             if uniq_sw['name'] == act_sw['name']:
                 if act_sw['connectionStatus'] == 'CONNECTED':
-                    logger.debug("%s exists in topology and Connected",uniq_sw['name'])
+                    logger.info("%s exists in topology and Connected",uniq_sw['name'])
                     res_uniq['switches'].append({'name':uniq_sw['name'], 'id': act_sw['id']})
-                    #checking ports
+                    logger.info("Polling switches for ports")
                     for parentif_obj in uniq['parent_ifaces']:
                         if parentif_obj['switch'] == act_sw['name']:
                             try:
@@ -230,7 +240,6 @@ def normalize_services(svc):
             s['obj']={"tunnelType": "STATIC", "pathfinding": "SHORTEST_PATH", "symmetry": "SYMMETRIC", "name": s['name'],
                "src": None, "dst": None,
                "qos": qos['id']}
-            pprint(s)
             newsvc.append(s)
         elif s['type']=='m2m':
             s['obj'] = {
@@ -240,7 +249,15 @@ def normalize_services(svc):
                 "macTableSize": 100,
                 "rows": [],
                 "name": s['name']}
-            pprint(s)
+            newsvc.append(s)
+        elif s['type']=='p2m':
+            s['obj'] = {
+                "sessionIdleTimeout": 10,
+                "tunnelIdleTimeout": 60,
+                "macIdleTimeout": 300,
+                "macTableSize": 100,
+                "rows": [],
+                "name": s['name']}
             newsvc.append(s)
         else:
             pass
@@ -275,6 +292,20 @@ def normalize_interfaces(svc):
             new_si['qos']=qos
             new_si['si']=si['id']
             svc['obj']['rows'].append(new_si)
+    elif svc['type'] == 'p2m':
+        for si in svc['si']:
+            new_si = {}
+            if "defaultInterface" in si.keys():
+                new_si['defaultInterface'] = si['defaultInterface']
+            else:
+                new_si["defaultInterface"] = False
+            if "role" in si.keys():
+                new_si['role'] = si['role']
+            else:
+                new_si["role"] = "LEAF"
+            new_si['qos'] = qos
+            new_si['si'] = si['id']
+            svc['obj']['rows'].append(new_si)
     return(svc)
 
 def get_si_by_object(obj):
@@ -288,11 +319,11 @@ def get_si_by_object(obj):
                 if str(port["vlan"]) == str(obj["vlan"]) and str(port['secondVlan']) == str(obj['secondVlan']):
                     return port['id']
 
-def add_services_with_sis(flat_services_config):
+def add_services_with_sis(flat_services_config, thread_id):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
     for n_svc in range(len(norm_svcs)):
-        logger.info("Adding service %s/%s (%s%%)",n_svc+1,len(norm_svcs),int(((n_svc+1)/len(norm_svcs))*100))
+        logger.info("Thread%s: Adding service %s/%s (%s%%)", thread_id, n_svc+1,len(norm_svcs),int((((n_svc+1)/len(norm_svcs))*100)))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
             c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
             ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
@@ -302,7 +333,9 @@ def add_services_with_sis(flat_services_config):
             c.add_p2p_service(cluster_id,norm_svcs[n_svc]['obj'])
         elif norm_svcs[n_svc]['type']=='m2m':
             c.add_m2m_service(cluster_id, norm_svcs[n_svc]['obj'])
-    logger.info("Services created\n %s\n" % pformat(norm_svcs))
+        elif norm_svcs[n_svc]['type'] == 'p2m':
+            c.add_p2m_service(cluster_id, norm_svcs[n_svc]['obj'])
+    logger.debug("Services created\n %s\n" % pformat(norm_svcs))
     return(norm_svcs)
 
 def get_all_services():
@@ -320,7 +353,6 @@ def get_all_sis_of_cluster():
     ifs=[]
     for sw in switches:
         ifs.extend(c.get_switch(sw['id']))
-    pprint(ifs)
     return ifs
 
 def delete_all_unused_sis(sis):
@@ -335,6 +367,8 @@ def delete_all_services_with_sis():
         c.del_p2p_service(cluster_id,svc)
     for svc in svcs['m2m']:
         c.del_m2m_service(cluster_id,svc)
+    for svc in svcs['p2m']:
+        c.del_p2m_service(cluster_id,svc)
     all_sis=get_all_sis_of_cluster()
     delete_all_unused_sis(all_sis)
 
@@ -342,6 +376,24 @@ def get_switch_id_by_name(sw_name):
     for switch in switches:
         if switch['name']==sw_name:
             return str(switch['id'])
+
+def split_list_to_chunks(in_list, num_chunks):
+    if num_chunks>len(in_list):
+        num_chunks=len(in_list)
+    out_list = []
+    for l in range(num_chunks):
+        out_list.append([])
+    while True:
+        for out_l in range(num_chunks):
+            try:
+                item=in_list.pop(0)
+                out_list[out_l].append(item)
+            except:
+                return out_list
+    return out_list
+
+def thread_task():
+    pass
 
 if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
@@ -369,11 +421,30 @@ if __name__ == '__main__':
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
         delete_all_services_with_sis()
-        add_services_with_sis(flat_cfg)
+        #add_services_with_sis(flat_cfg)
+        #
+        # TODO threading goes here - need to reuse
+        threads=10
+        q = Queue.Queue()
+        flcfg_chunked=split_list_to_chunks(flat_cfg,threads)
+        threads_obj = []
+        try:
+            for thread_id in range(len(flcfg_chunked)):
+                t = threading.Thread(target=add_services_with_sis, args=([flcfg_chunked.pop()],thread_id))
+                t.start()
+                threads_obj.append(t)
+                while time.sleep(1):
+                    alive=0
+                    for u in threads_obj:
+                        if u.is_alive():
+                            alive += 1
+                            print "waiting thread %s" % u
+                    print "%s alive" % alive
+                    if alive == 0:
+                        exit()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info('\n! Received keyboard interrupt, quitting threads.\n Please wait ~30 seconds')
+            os.kill(os.getpid(), signal.SIGTERM)
     else:
         logger.warning("Your arg didn't match any action. Possible actions are\n\n validate\n clear-all\n del\n add\n")
 
-
-    #c.add_si(clusters[0]['id'],{"commutatorId":"578e3ae00f62c443091cd101","port":4,"tagType":"VLAN","vlan":1111})
-    #pprint(c.get_switch('578e3ae00f62c443091cd101'))
-    #c.del_si("578e854a0f62c443091cd1c3")

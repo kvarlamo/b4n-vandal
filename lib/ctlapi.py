@@ -18,6 +18,8 @@ class CtlAPI:
         self.login = login
         self.password = password
         self.client = requests.session()
+        self.adapter = requests.adapters.HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=3)
+        self.client.mount('http://', self.adapter)
         self.get_csrf_token()
         login_data = dict(j_username=self.login, j_password=self.password)
         self.logger.debug("Login as %s :" % self.login)
@@ -87,3 +89,7 @@ class CtlAPI:
         return self.post("api/cluster/%s/m2m" % cluster_id,obj)
     def del_m2m_service(self, cluster_id, obj):
         return self.delete("api/cluster/%s/m2m/%s" % (cluster_id, obj['id']))
+    def add_p2m_service(self,cluster_id, obj):
+        return self.post("api/cluster/%s/p2m" % cluster_id,obj)
+    def del_p2m_service(self, cluster_id, obj):
+        return self.delete("api/cluster/%s/p2m/%s" % (cluster_id, obj['id']))

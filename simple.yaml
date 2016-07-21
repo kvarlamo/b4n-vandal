@@ -6,7 +6,7 @@ orc:
     pass: admin
 
 vars:
-    x: 100::149
+    x: 100::110
 
 p2p:
     -
@@ -54,4 +54,25 @@ m2m:
                 switch: EdgeCore5610-100
                 port: 3
                 vlan: $x+700
+                secondVlan: 16
+p2m:
+    -
+        name: p2m_$x
+        si:
+            -
+                switch: EdgeCore5610-99
+                port: 3
+                vlan: $x+800
+                secondVlan: 14
+                defaultInterface: True
+                role: ROOT
+            -
+                switch: EdgeCore5610-101
+                port: 3
+                vlan: $x+900
+                secondVlan: 15
+            -
+                switch: EdgeCore5610-100
+                port: 3
+                vlan: $x+1000
                 secondVlan: 16
