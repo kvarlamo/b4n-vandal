@@ -323,7 +323,7 @@ def add_services_with_sis(flat_services_config, thread_id):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
     for n_svc in range(len(norm_svcs)):
-        logger.info("Thread%s: Adding service %s/%s (%s%%)", thread_id, n_svc+1,len(norm_svcs),int((((n_svc+1)/len(norm_svcs))*100)))
+        logger.info("Thread%s: Adding service %s/%s (%s%%)", thread_id, n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
             c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
             ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
@@ -424,13 +424,13 @@ if __name__ == '__main__':
         #add_services_with_sis(flat_cfg)
         #
         # TODO threading goes here - need to reuse
-        threads=10
+        threads=5
         q = Queue.Queue()
         flcfg_chunked=split_list_to_chunks(flat_cfg,threads)
         threads_obj = []
         try:
             for thread_id in range(len(flcfg_chunked)):
-                t = threading.Thread(target=add_services_with_sis, args=([flcfg_chunked.pop()],thread_id))
+                t = threading.Thread(target=add_services_with_sis, args=([flcfg_chunked.pop(),thread_id]))
                 t.start()
                 threads_obj.append(t)
                 while time.sleep(1):
