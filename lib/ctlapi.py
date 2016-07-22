@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import requests
 import json
-import logging
+import logging, pprint
 logger = logging.getLogger(__name__)
 
 class CtlAPI:
@@ -32,6 +32,7 @@ class CtlAPI:
         self.logger.debug("POST %s%s %s " % (self.baseurl, self.url, self.request))
         self.r = self.client.post(self.baseurl + self.url, data=self.request, headers={"content-type": "application/json;charset=utf-8", 'X-CSRF-TOKEN': self.csrf})
         self.logger.debug("HTTP_Resp:%s" % self.r.status_code)
+        return self.r
     def delete(self, url):
         self.url = url
         self.get_csrf_token()

@@ -326,8 +326,10 @@ def add_services_with_sis(flat_services_config, thread_id):
     for n_svc in range(len(norm_svcs)):
         logger.info("Thread%s: Adding service %s/%s (%s%%)", thread_id, n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
-            c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
-            ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
+            ifc=c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
+            #pprint.pprint(ifc.json())
+            ifaceid=ifc.json()[u'id']
+            #ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
             norm_svcs[n_svc]['si'][ifacenum]['id']=ifaceid
         normalize_interfaces(norm_svcs[n_svc])
         if norm_svcs[n_svc]['type']=='p2p':
@@ -421,7 +423,7 @@ if __name__ == '__main__':
         logger.info("NOT IMPLEMENTED YET. TOTALLY REMOVES ALL SERVICES AND ADDS SIS from template")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-        delete_all_services_with_sis()
+        #delete_all_services_with_sis()
         #add_services_with_sis(flat_cfg)
         #
         # TODO threading goes here - need to reuse
