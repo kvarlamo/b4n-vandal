@@ -320,16 +320,14 @@ def get_si_by_object(obj):
                 if str(port["vlan"]) == str(obj["vlan"]) and str(port['secondVlan']) == str(obj['secondVlan']):
                     return port['id']
 
-def add_services_with_sis(flat_services_config, thread_id):
+def add_services_with_sis(flat_services_config):
     norm_sis = normalize_sis(flat_services_config)
     norm_svcs = normalize_services(norm_sis)
     for n_svc in range(len(norm_svcs)):
-        logger.info("Thread%s: Adding service %s/%s (%s%%)", thread_id, n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
+        logger.info("Adding service %s/%s (%s%%)", n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
             ifc=c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
-            #pprint.pprint(ifc.json())
             ifaceid=ifc.json()[u'id']
-            #ifaceid=get_si_by_object(norm_svcs[n_svc]['si'][ifacenum])
             norm_svcs[n_svc]['si'][ifacenum]['id']=ifaceid
         normalize_interfaces(norm_svcs[n_svc])
         if norm_svcs[n_svc]['type']=='p2p':
@@ -380,23 +378,6 @@ def get_switch_id_by_name(sw_name):
         if switch['name']==sw_name:
             return str(switch['id'])
 
-def split_list_to_chunks(in_list, num_chunks):
-    if num_chunks>len(in_list):
-        num_chunks=len(in_list)
-    out_list = []
-    for l in range(num_chunks):
-        out_list.append([])
-    while True:
-        for out_l in range(num_chunks):
-            try:
-                item=in_list.pop(0)
-                out_list[out_l].append(item)
-            except:
-                return out_list
-    return out_list
-
-def thread_task():
-    pass
 
 if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
@@ -419,35 +400,10 @@ if __name__ == '__main__':
         c, cluster_id, qos, switches = validate_cfg_against_controller()
         delete_all_services_with_sis()
     elif action=="add":
-        logger.info("Re-adding (REMOVING and ADDING) services and SIs listed in template")
-        logger.info("NOT IMPLEMENTED YET. TOTALLY REMOVES ALL SERVICES AND ADDS SIS from template")
+        logger.info("Adding services and SIs listed in template")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-        #delete_all_services_with_sis()
-        #add_services_with_sis(flat_cfg)
-        #
-        # TODO threading goes here - need to reuse
-        threads=1
-        q = Queue.Queue()
-        flcfg_chunked=split_list_to_chunks(flat_cfg,threads)
-        threads_obj = []
-        try:
-            for thread_id in range(len(flcfg_chunked)):
-                t = threading.Thread(target=add_services_with_sis, args=([flcfg_chunked.pop(),thread_id]))
-                t.start()
-                threads_obj.append(t)
-                while time.sleep(1):
-                    alive=0
-                    for u in threads_obj:
-                        if u.is_alive():
-                            alive += 1
-                            print "waiting thread %s" % u
-                    print "%s alive" % alive
-                    if alive == 0:
-                        exit()
-        except (KeyboardInterrupt, SystemExit):
-            logger.info('\n! Received keyboard interrupt, quitting threads.\n Please wait ~30 seconds')
-            os.kill(os.getpid(), signal.SIGTERM)
+        add_services_with_sis(flat_cfg)
     else:
         logger.warning("Your arg didn't match any action. Possible actions are\n\n validate\n clear-all\n del\n add\n")
 

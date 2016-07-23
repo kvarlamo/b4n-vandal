@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import requests
 import json
-import logging, pprint
+import logging, pprint, time
 logger = logging.getLogger(__name__)
 
 class CtlAPI:
@@ -79,18 +79,34 @@ class CtlAPI:
     def get_qos(self, cluster_id):
         return self.get("api/cluster/%s/qos?page=1&size=15" % cluster_id)['content']
     def add_si(self, cluster_id, iface_object):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.post("api/si?clusterId=%s" % cluster_id,iface_object)
     def del_si(self,si_id):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.delete("api/si/%s" % si_id)
     def add_p2p_service(self,cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.post("api/cluster/%s/p2PTunnels" % cluster_id,obj)
     def del_p2p_service(self, cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.delete("api/cluster/%s/p2PTunnels/%s" % (cluster_id, obj['id']))
     def add_m2m_service(self,cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.post("api/cluster/%s/m2m" % cluster_id,obj)
     def del_m2m_service(self, cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.delete("api/cluster/%s/m2m/%s" % (cluster_id, obj['id']))
     def add_p2m_service(self,cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.post("api/cluster/%s/p2m" % cluster_id,obj)
     def del_p2m_service(self, cluster_id, obj):
+        # TODO BUG workaround
+        time.sleep(0.1)
         return self.delete("api/cluster/%s/p2m/%s" % (cluster_id, obj['id']))
