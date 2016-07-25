@@ -342,9 +342,9 @@ def add_services_with_sis(flat_services_config):
     for n_svc in range(len(norm_svcs)):
         logger.info("Adding service %s/%s (%s%%)", n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
-            logger.info("    Adding SI %s/%s",  ifacenum+1 , len(norm_svcs[n_svc]['si']))
+            logger.debug("    Adding SI %s/%s",  ifacenum+1 , len(norm_svcs[n_svc]['si']))
             if "reserveSI" in norm_svcs[n_svc]['si'][ifacenum]:
-                logger.info("        Adding ReserveSI for %s/%s", ifacenum + 1, len(norm_svcs[n_svc]['si']))
+                logger.debug("    Adding Reserve for SI %s/%s", ifacenum + 1, len(norm_svcs[n_svc]['si']))
                 ifc = c.add_si(cluster_id, norm_svcs[n_svc]['si'][ifacenum]["reserveSI"])
                 ifaceid = ifc.json()[u'id']
                 norm_svcs[n_svc]['si'][ifacenum]["reserveSI"]=ifaceid
@@ -387,11 +387,15 @@ def delete_all_unused_sis(sis):
 def delete_all_services_with_sis():
     svcs=get_all_services()
     for svc in svcs['p2p']:
+        logger.info("Delete P2P services")
         c.del_p2p_service(cluster_id,svc)
     for svc in svcs['m2m']:
+        logger.info("Delete M2M services")
         c.del_m2m_service(cluster_id,svc)
     for svc in svcs['p2m']:
+        logger.info("Delete P2M services")
         c.del_p2m_service(cluster_id,svc)
+    logger.info("Delete all SIs")
     all_sis=get_all_sis_of_cluster()
     delete_all_unused_sis(all_sis)
 
