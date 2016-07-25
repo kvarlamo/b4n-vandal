@@ -387,11 +387,15 @@ def delete_all_unused_sis(sis):
 def delete_all_services_with_sis():
     svcs=get_all_services()
     for svc in svcs['p2p']:
+        logger.info("Delete P2P services")
         c.del_p2p_service(cluster_id,svc)
     for svc in svcs['m2m']:
+        logger.info("Delete M2M services")
         c.del_m2m_service(cluster_id,svc)
     for svc in svcs['p2m']:
+        logger.info("Delete P2M services")
         c.del_p2m_service(cluster_id,svc)
+    logger.info("Delete all SIs")
     all_sis=get_all_sis_of_cluster()
     delete_all_unused_sis(all_sis)
 
