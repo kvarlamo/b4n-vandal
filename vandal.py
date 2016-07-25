@@ -342,9 +342,9 @@ def add_services_with_sis(flat_services_config):
     for n_svc in range(len(norm_svcs)):
         logger.info("Adding service %s/%s (%s%%)", n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
-            logger.info("    Adding SI %s/%s",  ifacenum+1 , len(norm_svcs[n_svc]['si']))
+            logger.debug("    Adding SI %s/%s",  ifacenum+1 , len(norm_svcs[n_svc]['si']))
             if "reserveSI" in norm_svcs[n_svc]['si'][ifacenum]:
-                logger.info("        Adding ReserveSI for %s/%s", ifacenum + 1, len(norm_svcs[n_svc]['si']))
+                logger.debug("    Adding Reserve for SI %s/%s", ifacenum + 1, len(norm_svcs[n_svc]['si']))
                 ifc = c.add_si(cluster_id, norm_svcs[n_svc]['si'][ifacenum]["reserveSI"])
                 ifaceid = ifc.json()[u'id']
                 norm_svcs[n_svc]['si'][ifacenum]["reserveSI"]=ifaceid

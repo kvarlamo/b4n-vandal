@@ -4,7 +4,7 @@ orc:
     pass: admin
 
 vars:
-    x: 100::110
+    x: 100::199
 
 p2p:
     -
@@ -12,12 +12,12 @@ p2p:
         si:
             -
                 switch: SW1
-                port: 4
+                port: 1
                 vlan: $x
                 secondVlan: $x
             -
                 switch: SW2
-                port: 4
+                port: 1
                 vlan: $x
                 secondVlan: $x
     -
@@ -25,12 +25,12 @@ p2p:
         si:
             -
                 switch: SW3
-                port: 4
+                port: 1
                 vlan: $x+100
                 secondVlan: $x+100
             -
                 switch: SW4
-                port: 3
+                port: 1
                 vlan: $x+100
                 secondVlan: $x+100
 m2m:
@@ -39,22 +39,22 @@ m2m:
         si:
             -
                 switch: SW1
-                port: 4
+                port: 2
                 vlan: $x+200
                 secondVlan: $x+200
                 defaultInterface: True
                 reserveSI :
                     switch: SW2
-                    port: 4
+                    port: 2
                     vlan: $x+1200
             -
                 switch: SW2
-                port: 4
+                port: 2
                 vlan: $x+200
                 secondVlan: $x+200
             -
                 switch: SW3
-                port: 4
+                port: 2
                 vlan: $x+200
                 secondVlan: $x+200
 p2m:
@@ -63,23 +63,23 @@ p2m:
         si:
             -
                 switch: SW1
-                port: 4
+                port: 3
                 vlan: $x+300
                 secondVlan: $x+300
-                #defaultInterface: True   feature broken. see ORC-486
+                defaultInterface: True
                 role: ROOT
-            -
-                switch: SW2
-                port: 4
-                vlan: $x+300
-                secondVlan: $x+300
                 reserveSI :
                     switch: SW1
-                    port: 4
+                    port: 1
                     vlan: $x+1200
                     secondVlan: $x+1200
             -
+                switch: SW2
+                port: 3
+                vlan: $x+300
+                secondVlan: $x+300
+            -
                 switch: SW3
-                port: 4
+                port: 3
                 vlan: $x+300
                 secondVlan: $x+300
