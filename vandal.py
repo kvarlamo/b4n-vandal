@@ -235,6 +235,7 @@ def flatten_composed_configs(composedcfg):
     return flatten
 
 def normalize_services(svc):
+    """add missing parameters for each type of services"""
     newsvc=[]
     for s in svc:
         if s['type']=='p2p':
@@ -264,22 +265,32 @@ def normalize_services(svc):
             pass
     return newsvc
 
+def normalize_si(si):
+    if 'secondVlan' in si.keys():
+        si['tagType'] = "DOUBLE_VLAN"
+    elif "vlan" in si.keys():
+        si['tagType'] = "VLAN"
+    else:
+        logger.warning(
+            "SI doesn't contain neither vlan nor second Vlan, so we can't assign tagType. UNTAGGED ifaces not supported")
+    si["commutatorId"] = get_switch_id_by_name(si['switch'])
+    del (si['switch'])
+    return si
+
+
 def normalize_sis(svc):
     #normalized_sis=[]
+    #ret_svc=
     for s in svc:
         for si in s['si']:
-            if 'secondVlan' in si.keys():
-                si['tagType']="DOUBLE_VLAN"
-            elif "vlan" in si.keys():
-                si['tagType'] ="VLAN"
-            else:
-                logger.warning("SI doesn't contain neither vlan nor second Vlan, so we can't assign tagType. UNTAGGED ifaces not supported")
-            si["commutatorId"]=get_switch_id_by_name(si['switch'])
-            del(si['switch'])
+            si=normalize_si(si)
+            if "reserveSI" in si:
+                si["reserveSI"]=normalize_si(si["reserveSI"])
     #normalized_sis.append(s)
     return svc
 
 def normalize_interfaces(svc):
+    """populate rows or src/dst"""
     if svc['type']=='p2p':
         svc['obj']['src'] = svc['si'][0]['id']
         svc['obj']['dst'] = svc['si'][1]['id']
@@ -292,6 +303,9 @@ def normalize_interfaces(svc):
                 new_si["defaultInterface"] = False
             new_si['qos']=qos
             new_si['si']=si['id']
+            # here
+            if "reserveSI" in si.keys():
+                new_si["reserveSI"] = si["reserveSI"]
             svc['obj']['rows'].append(new_si)
     elif svc['type'] == 'p2m':
         for si in svc['si']:
@@ -306,6 +320,8 @@ def normalize_interfaces(svc):
                 new_si["role"] = "LEAF"
             new_si['qos'] = qos
             new_si['si'] = si['id']
+            if "reserveSI" in si.keys():
+                new_si["reserveSI"] = si["reserveSI"]
             svc['obj']['rows'].append(new_si)
     return(svc)
 
@@ -326,6 +342,12 @@ def add_services_with_sis(flat_services_config):
     for n_svc in range(len(norm_svcs)):
         logger.info("Adding service %s/%s (%s%%)", n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
+            logger.info("    Adding SI %s/%s",  ifacenum+1 , len(norm_svcs[n_svc]['si']))
+            if "reserveSI" in norm_svcs[n_svc]['si'][ifacenum]:
+                logger.info("        Adding ReserveSI for %s/%s", ifacenum + 1, len(norm_svcs[n_svc]['si']))
+                ifc = c.add_si(cluster_id, norm_svcs[n_svc]['si'][ifacenum]["reserveSI"])
+                ifaceid = ifc.json()[u'id']
+                norm_svcs[n_svc]['si'][ifacenum]["reserveSI"]=ifaceid
             ifc=c.add_si(cluster_id,norm_svcs[n_svc]['si'][ifacenum])
             ifaceid=ifc.json()[u'id']
             norm_svcs[n_svc]['si'][ifacenum]['id']=ifaceid
