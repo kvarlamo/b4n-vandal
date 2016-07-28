@@ -4,7 +4,7 @@ orc:
     pass: admin
 
 vars:
-    x: 100::199
+    x: 100::109
 
 p2p:
     -
@@ -20,6 +20,10 @@ p2p:
                 port: 1
                 vlan: $x
                 secondVlan: $x
+        reserveSI :
+            switch: SW2
+            port: 2
+            vlan: $x+1200
     -
         name: p2p_$x_B
         si:

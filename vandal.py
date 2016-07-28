@@ -242,6 +242,10 @@ def normalize_services(svc):
             s['obj']={"tunnelType": "STATIC", "pathfinding": "SHORTEST_PATH", "symmetry": "SYMMETRIC", "name": s['name'],
                "src": None, "dst": None,
                "qos": qos['id']}
+            if "reserveSI" in s.keys():
+                s['obj']["reservePathfinding"]=s['obj']["pathfinding"]
+                s['obj']["reserveTransitCommutators"]=[]
+                s['obj']["hasReserve"] = True
             newsvc.append(s)
         elif s['type']=='m2m':
             s['obj'] = {
@@ -286,6 +290,8 @@ def normalize_sis(svc):
             si=normalize_si(si)
             if "reserveSI" in si:
                 si["reserveSI"]=normalize_si(si["reserveSI"])
+        if ("reserveSI" in s.keys()) and (s["type"] == "p2p"):
+            s["si"].append(normalize_si(s["reserveSI"]))
     #normalized_sis.append(s)
     return svc
 
@@ -294,6 +300,9 @@ def normalize_interfaces(svc):
     if svc['type']=='p2p':
         svc['obj']['src'] = svc['si'][0]['id']
         svc['obj']['dst'] = svc['si'][1]['id']
+        if "hasReserve" in svc['obj'].keys():
+            if svc['obj']["hasReserve"] == True:
+                svc['obj']["reserveSI"] = svc['si'][2]['id']
     elif svc['type']=='m2m':
         for si in svc['si']:
             new_si={}
