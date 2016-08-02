@@ -8,8 +8,8 @@ class CtlAPI:
     def __init__(self, baseurl, login, password, **kwargs):
         if 'logger' in kwargs:
             self.logger=kwargs['logger']
-            logging.getLogger("requests").setLevel(self.logger.level)
-            logging.getLogger("urllib3").setLevel(self.logger.level)
+            logging.getLogger("requests").setLevel(logging.WARNING)
+            logging.getLogger("urllib3").setLevel(logging.WARNING)
         else:
             self.logger=logger
             logging.getLogger("requests").setLevel(logging.WARNING)
