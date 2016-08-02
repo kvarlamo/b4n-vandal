@@ -61,23 +61,23 @@ class CtlAPI:
     def get_clusters(self):
         return self.get('api/clusters')
     def get_switches_of_cluster(self, cluster_id):
-        return self.get("api/cluster/%s/commutators?page=1&size=15" % cluster_id)['content']
+        return self.get("api/cluster/%s/commutators?page=1&size=1000" % cluster_id)['content']
     def get_switch(self,sw_id):
         return self.get("api/si/commutator?commutatorId=%s" % sw_id)
     def get_p2p_services(self,cluster_id):
-        res=self.get("api/cluster/%s/p2PTunnels?page=1&size=15" % cluster_id)
+        res=self.get("api/cluster/%s/p2PTunnels?page=1&size=1000" % cluster_id)
         if 'content' in res.keys():
             return res['content']
     def get_m2m_services(self, cluster_id):
-        res=self.get("api/cluster/%s/m2m?page=1&size=15" % cluster_id)
+        res=self.get("api/cluster/%s/m2m?page=1&size=1000" % cluster_id)
         if 'content' in res.keys():
             return res['content']
     def get_p2m_services(self, cluster_id):
-        res = self.get("api/cluster/%s/p2m?page=1&size=15" % cluster_id)
+        res = self.get("api/cluster/%s/p2m?page=1&size=1000" % cluster_id)
         if 'content' in res.keys():
             return res['content']
     def get_qos(self, cluster_id):
-        return self.get("api/cluster/%s/qos?page=1&size=15" % cluster_id)['content']
+        return self.get("api/cluster/%s/qos?page=1&size=1000" % cluster_id)['content']
     def add_si(self, cluster_id, iface_object):
         # TODO BUG workaround
         time.sleep(0.1)
