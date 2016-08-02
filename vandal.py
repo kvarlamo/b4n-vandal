@@ -24,7 +24,8 @@ def parse_args():
     config = yaml.safe_load(args.config)
     return (args, config)
 
-def compose_config(config):
+def compose_config():
+    global uniq, flat_cfg, config
     logger.debug("Original config loaded from file :\n%s",pformat(config))
     #resolve to lists
     config=config_var_str_to_lists(config)
@@ -40,10 +41,10 @@ def compose_config(config):
     logger.debug("Composed configs dump:\n%s ", pformat(composed_configs))
     uniq=get_unique_sets(composed_configs)
     flat_cfg = flatten_composed_configs(composed_configs)
-    return uniq, flat_cfg
 
 def validate_cfg_against_controller():
     # begin interaction with orc
+    global c, cluster_id, default_qos, switches, qoslist
     logger.info("Validated generated configs against network configuration..")
     logger.info("Conneting to Orchestrator %s", config['orc']['url'])
     c = CtlAPI(config['orc']['url'], config['orc']['user'], config['orc']['pass'], logger=logger)
@@ -51,7 +52,7 @@ def validate_cfg_against_controller():
     clusters=c.get_clusters()
     logger.debug("Got clusters: %s", clusters)
     if len(clusters)<1:
-        raise(Exception, "Clusters are not configured")
+        raise Exception("Clusters are not configured")
     logger.debug("Number of clusters: %s", len(clusters))
     if len(clusters) > 1:
         logger.warning("There is more than one cluster! We hope we are in luck")
@@ -59,21 +60,21 @@ def validate_cfg_against_controller():
     logger.info("Current cluster ID: %s", cluster_id)
     logger.info("Checking if QoS configured - we need at least one profile")
     qos_profiles = c.get_qos(clusters[0]['id'])
-    if len(qos_profiles) == 1:
-        logger.debug("QOS is already configured %s", qos_profiles)
-    elif len(qos_profiles) == 0:
+    if len(qos_profiles) > 0:
+        logger.debug("QOS rules are already configured %s", qos_profiles)
+        logger.info("We-ll use first rule as default: %s", qos_profiles[0])
+    else:
         logger.warning("QOS Rules not configured: %s", qos_profiles)
-    elif len(qos_profiles) > 1:
-        logger.warning("Multiple QOS Rules configured: %s", qos_profiles)
-        logger.warning("We-ll use first rule: %s", qos_profiles[0])
-    qos=qos_profiles[0]
-    logger.debug("Current QOS profile: %s", qos)
+        raise Exception("QOS Rules not configured")
+    default_qos = qos_profiles[0]
+    qoslist = qos_profiles
+    logger.debug("Default QOS profile: %s", default_qos)
     logger.info("Getting switches configurations...")
     switches=c.get_switches_of_cluster(cluster_id)
     logger.debug("Got switches: %s", pformat(switches))
     logger.info("%s switches there", len((switches)))
     check_switches(uniq,switches)
-    return c, cluster_id, qos, switches
+    check_qos()
 
 def config_var_str_to_lists(config):
     # processes var section of config and evaluates strings X-Y to lists
@@ -220,6 +221,27 @@ def check_switches(uniq,actual_switches):
             raise(Exception("switch %s not found in topology" % uniq_sw['name']))
     return res_uniq
 
+
+# Check if cluster has all QoS profles referenced by configuration
+def check_qos():
+    global qos_by_name
+    for cfg in flat_cfg:
+        if 'qos' in cfg.keys() and cfg['type']=='p2p':
+            qos_by_name[cfg['qos']] = None
+        else:
+            for si in cfg['si']:
+                if 'qos' in si.keys():
+                    qos_by_name[si['qos']] = None
+    for cfg_qosname in qos_by_name.keys():
+        for actual_qosrule in qoslist:
+            if actual_qosrule['name'] == cfg_qosname:
+                qos_by_name[cfg_qosname] = actual_qosrule
+                break
+        else:
+            raise Exception("No QoS profile %s in system" % cfg_qosname)
+    return
+
+
 # make a single list of all services with type
 def flatten_composed_configs(composedcfg):
     flatten=[]
@@ -240,12 +262,15 @@ def normalize_services(svc):
     for s in svc:
         if s['type']=='p2p':
             s['obj']={"tunnelType": "STATIC", "pathfinding": "SHORTEST_PATH", "symmetry": "SYMMETRIC", "name": s['name'],
-               "src": None, "dst": None,
-               "qos": qos['id']}
+               "src": None, "dst": None}
             if "reserveSI" in s.keys():
                 s['obj']["reservePathfinding"]=s['obj']["pathfinding"]
                 s['obj']["reserveTransitCommutators"]=[]
                 s['obj']["hasReserve"] = True
+            if "qos" in s.keys():
+                s['obj']['qos'] = qos_by_name[s['qos']]['id']
+            else:
+                s['obj']['qos'] = default_qos['id']
             newsvc.append(s)
         elif s['type']=='m2m':
             s['obj'] = {
@@ -278,6 +303,10 @@ def normalize_si(si):
         logger.warning(
             "SI doesn't contain neither vlan nor second Vlan, so we can't assign tagType. UNTAGGED ifaces not supported")
     si["commutatorId"] = get_switch_id_by_name(si['switch'])
+    if 'qos' in si.keys():
+        si['qos'] = qos_by_name[si['qos']]
+    else:
+        si['qos'] = default_qos
     del (si['switch'])
     return si
 
@@ -310,7 +339,10 @@ def normalize_interfaces(svc):
                 new_si['defaultInterface'] = si['defaultInterface']
             else:
                 new_si["defaultInterface"] = False
-            new_si['qos']=qos
+            if 'qos' in si.keys():
+                new_si['qos'] = si['qos']
+            else:
+                new_si['qos'] = default_qos
             new_si['si']=si['id']
             # here
             if "reserveSI" in si.keys():
@@ -323,11 +355,14 @@ def normalize_interfaces(svc):
                 new_si['defaultInterface'] = si['defaultInterface']
             else:
                 new_si["defaultInterface"] = False
+            if 'qos' in si.keys():
+                new_si['qos'] = si['qos']
+            else:
+                new_si['qos'] = default_qos
             if "role" in si.keys():
                 new_si['role'] = si['role']
             else:
                 new_si["role"] = "LEAF"
-            new_si['qos'] = qos
             new_si['si'] = si['id']
             if "reserveSI" in si.keys():
                 new_si["reserveSI"] = si["reserveSI"]
@@ -345,9 +380,9 @@ def get_si_by_object(obj):
                 if str(port["vlan"]) == str(obj["vlan"]) and str(port['secondVlan']) == str(obj['secondVlan']):
                     return port['id']
 
-def add_services_with_sis(flat_services_config):
-    norm_sis = normalize_sis(flat_services_config)
-    norm_svcs = normalize_services(norm_sis)
+def add_services_with_sis():
+    norm_sis = normalize_sis(flat_cfg)
+    norm_svcs = normalize_services(flat_cfg)
     for n_svc in range(len(norm_svcs)):
         logger.info("Adding service %s/%s (%s%%)", n_svc+1,len(norm_svcs),int(float((n_svc+1))/float(len(norm_svcs))*100))
         for ifacenum in range(len(norm_svcs[n_svc]['si'])):
@@ -392,10 +427,11 @@ def delete_all_unused_sis(sis):
         logger.info("Delete SIs %s/%s",si,len(sis))
         c.del_si(sis[si]['id'])
 
-def delete_sis_by_ids(sis_ids):
-    for si in range(len(sis_ids)):
-        logger.info("Delete SIs %s/%s", si, len(sis_ids))
-        c.del_si(sis_ids[si])
+def delete_sis(sis_list):
+    for si in range(len(sis_list)):
+        logger.info("Delete SIs %s/%s", si+1, len(sis_list))
+        if sis_list[si] != None and 'id' in sis_list[si].keys():
+            c.del_si(sis_list[si]["id"])
 
 # Delete all services and unused SIs
 def delete_all_services_with_sis():
@@ -414,7 +450,7 @@ def delete_all_services_with_sis():
     logger.info("Delete all SIs of cluster")
     delete_all_unused_sis(all_sis)
 
-def del_config_services_with_sis(flat_services_config):
+def del_config_services_with_sis():
     """
     Delete services listed in configuration file.
     Only 'name' AND 'type' checked, other fields ignored
@@ -423,7 +459,7 @@ def del_config_services_with_sis(flat_services_config):
     svcs = get_all_services()
     logger.info("Delete P2P services which name matches template")
     for svc in svcs['p2p']:
-        for flatsvcitem in flat_services_config:
+        for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'p2p' and flatsvcitem['name'] == svc['name']:
                 sis_to_delete.append(svc['dst'])
                 sis_to_delete.append(svc['src'])
@@ -433,7 +469,7 @@ def del_config_services_with_sis(flat_services_config):
                 c.del_p2p_service(cluster_id,svc)
     logger.info("Delete M2M services which name matches template")
     for svc in svcs['m2m']:
-        for flatsvcitem in flat_services_config:
+        for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'm2m' and flatsvcitem['name'] == svc['name']:
                 for ifc in svc['rows']:
                     sis_to_delete.append(ifc['si'])
@@ -443,7 +479,7 @@ def del_config_services_with_sis(flat_services_config):
                 c.del_m2m_service(cluster_id, svc)
     logger.info("Delete P2M services which name matches template")
     for svc in svcs['p2m']:
-        for flatsvcitem in flat_services_config:
+        for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'p2m' and flatsvcitem['name'] == svc['name']:
                 for ifc in svc['rows']:
                     sis_to_delete.append(ifc['si'])
@@ -452,41 +488,47 @@ def del_config_services_with_sis(flat_services_config):
                 logger.info("Delete P2M service %s" % svc['name'])
                 c.del_p2m_service(cluster_id, svc)
     logger.info("Delete SIs of removed services")
-    delete_sis_by_ids(sis_to_delete)
+    delete_sis(sis_to_delete)
     return
-
-
 
 def get_switch_id_by_name(sw_name):
     for switch in switches:
         if switch['name']==sw_name:
             return str(switch['id'])
 
-
 if __name__ == '__main__':
     #config is python'ed content of YAML configuration, then we resolve X-Y sentences to lists
+    uniq = None
+    flat_cfg = None
+    c = None
+    cluster_id = None
+    default_qos = None
+    qoslist = None
+    qos_by_name = {}
+    switches = None
+    config = None
     args, config = parse_args()
     logger.debug("args: %s, config: %s", pformat(args), pformat(config))
     action = args.ACTION
     if action=="validate":
         logger.info("Validating configuration against controller. No changes enforced")
-        uniq, flat_cfg = compose_config(config)
-        c, cluster_id, qos, switches = validate_cfg_against_controller()
+        compose_config()
+        validate_cfg_against_controller()
     elif action=="del-all":
         logger.info("REMOVING ALL services and SIs from controller configuration")
-        uniq, flat_cfg = compose_config(config)
-        c, cluster_id, qos, switches = validate_cfg_against_controller()
+        compose_config()
+        validate_cfg_against_controller()
         delete_all_services_with_sis()
     elif action=="del":
         logger.info("REMOVING from controller configuration services and SIs listed in template")
-        uniq, flat_cfg = compose_config(config)
-        c, cluster_id, qos, switches = validate_cfg_against_controller()
-        del_config_services_with_sis(flat_cfg)
+        compose_config()
+        validate_cfg_against_controller()
+        del_config_services_with_sis()
     elif action=="add":
         logger.info("Adding services and SIs listed in template")
-        uniq, flat_cfg = compose_config(config)
-        c, cluster_id, qos, switches = validate_cfg_against_controller()
-        add_services_with_sis(flat_cfg)
+        compose_config()
+        validate_cfg_against_controller()
+        add_services_with_sis()
     else:
         logger.warning("Your arg didn't match any action. Possible actions are\n\n del-all  - Remove all configured services and SIs\n del  - Remove all services which name matches template\n add  - Add services from template\n")
 
