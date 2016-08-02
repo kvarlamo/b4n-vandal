@@ -33,7 +33,8 @@ Configure network via orchestrator
 ## Configure
 
 Default config file is "config.yaml". You can point to any other file with --config option
-YAML-based config divided into sections (dictionaries). 
+
+YAML-based config divided into sections (dictionaries): 
 
 ### Orchestrator settings section: orc
 * url
@@ -41,12 +42,16 @@ YAML-based config divided into sections (dictionaries).
 * pass
 
 ### Variables generator section: vars
+
 You can define any vars and their ranges.
-For most cases just one var will be enough.
+For most cases just one variable will be enough.
 
 ### Services sections: p2p, p2m, m2m
-Each service section consists of list of services of each type. Each service has its name and list of service interfaces
-You can reference variables defined in vars as $var and apply simple math evaluations $var+1 or Service_$var
+
+Each service section consists of list of services of each type. 
+Each service has its name and list of service interfaces.
+You can reference variables defined in vars as $var and apply simple math 
+evaluations ($var+1) or string concatenations (Service_$var).
 
 ## Run
 
@@ -55,6 +60,8 @@ You can reference variables defined in vars as $var and apply simple math evalua
     ./vandal.py -h
    
 ### Start with default config and push it:
+
+If --config=file omitted, config.yaml loaded
 
     ./vandal.py add
     
@@ -68,6 +75,14 @@ You can reference variables defined in vars as $var and apply simple math evalua
     
 ### Delete services and SIs:
 
+To delete services referenced by config file and their SIs use 'del' key.
+Other services and SIs will remain intact in orchestrator.
+
+It will remove all services which have the same name AND type. Other parameters
+aren't checked.
+
     ./vandal.py del
 
+To delete ALL services and SIs (including ones created manually or by another configurations):
 
+    ./vandal.py del-all
