@@ -422,16 +422,16 @@ def get_all_sis_of_cluster():
         ifs.extend(c.get_switch(sw['id']))
     return ifs
 
+# Todo Merge following code
 def delete_all_unused_sis(sis):
     for si in range(len(sis)):
         logger.info("Delete SIs %s/%s",si,len(sis))
         c.del_si(sis[si]['id'])
 
-def delete_sis(sis_list):
-    for si in range(len(sis_list)):
-        logger.info("Delete SIs %s/%s", si+1, len(sis_list))
-        if sis_list[si] != None and 'id' in sis_list[si].keys():
-            c.del_si(sis_list[si]["id"])
+def delete_sis(sis_id_list):
+    for si in range(len(sis_id_list)):
+        logger.info("Delete SIs %s/%s", si+1, len(sis_id_list))
+        c.del_si(sis_id_list[si])
 
 # Delete all services and unused SIs
 def delete_all_services_with_sis():
@@ -455,16 +455,16 @@ def del_config_services_with_sis():
     Delete services listed in configuration file.
     Only 'name' AND 'type' checked, other fields ignored
     """
-    sis_to_delete=[]
+    sis_ids_to_delete=[]
     svcs = get_all_services()
     logger.info("Delete P2P services which name matches template")
     for svc in svcs['p2p']:
         for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'p2p' and flatsvcitem['name'] == svc['name']:
-                sis_to_delete.append(svc['dst'])
-                sis_to_delete.append(svc['src'])
-                if 'reserveSI' in svc.keys():
-                    sis_to_delete.append(svc['reserveSI'])
+                sis_ids_to_delete.append(svc['dst']['id'])
+                sis_ids_to_delete.append(svc['src']['id'])
+                if 'reserveSI' in svc.keys() and svc['reserveSI'] != None:
+                    sis_ids_to_delete.append(svc['reserveSI']['id'])
                 logger.info("Delete P2P service %s" % svc['name'])
                 c.del_p2p_service(cluster_id,svc)
     logger.info("Delete M2M services which name matches template")
@@ -472,9 +472,9 @@ def del_config_services_with_sis():
         for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'm2m' and flatsvcitem['name'] == svc['name']:
                 for ifc in svc['rows']:
-                    sis_to_delete.append(ifc['si'])
-                    if 'reserveSI' in ifc.keys():
-                        sis_to_delete.append(ifc['reserveSI'])
+                    sis_ids_to_delete.append(ifc['si']['id'])
+                    if 'reserveSI' in ifc.keys() and ifc['reserveSI'] != None:
+                        sis_ids_to_delete.append(ifc['reserveSI']['id'])
                 logger.info("Delete M2M service %s" % svc['name'])
                 c.del_m2m_service(cluster_id, svc)
     logger.info("Delete P2M services which name matches template")
@@ -482,13 +482,13 @@ def del_config_services_with_sis():
         for flatsvcitem in flat_cfg:
             if flatsvcitem['type'] == 'p2m' and flatsvcitem['name'] == svc['name']:
                 for ifc in svc['rows']:
-                    sis_to_delete.append(ifc['si'])
-                    if 'reserveSI' in ifc.keys():
-                        sis_to_delete.append(ifc['reserveSI'])
+                    sis_ids_to_delete.append(ifc['si']['id'])
+                    if 'reserveSI' in ifc.keys() and ifc['reserveSI'] != None:
+                        sis_ids_to_delete.append(ifc['reserveSI']['id'])
                 logger.info("Delete P2M service %s" % svc['name'])
                 c.del_p2m_service(cluster_id, svc)
     logger.info("Delete SIs of removed services")
-    delete_sis(sis_to_delete)
+    delete_sis(sis_ids_to_delete)
     return
 
 def get_switch_id_by_name(sw_name):
