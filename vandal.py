@@ -392,21 +392,70 @@ def delete_all_unused_sis(sis):
         logger.info("Delete SIs %s/%s",si,len(sis))
         c.del_si(sis[si]['id'])
 
+def delete_sis_by_ids(sis_ids):
+    for si in range(len(sis_ids)):
+        logger.info("Delete SIs %s/%s", si, len(sis_ids))
+        c.del_si(sis_ids[si])
+
 # Delete all services and unused SIs
 def delete_all_services_with_sis():
     svcs=get_all_services()
     for svc in svcs['p2p']:
-        logger.info("Delete P2P services")
+        logger.info("Delete P2P service %s", svc["name"])
         c.del_p2p_service(cluster_id,svc)
     for svc in svcs['m2m']:
-        logger.info("Delete M2M services")
+        logger.info("Delete M2M service %s", svc["name"])
         c.del_m2m_service(cluster_id,svc)
     for svc in svcs['p2m']:
-        logger.info("Delete P2M services")
+        logger.info("Delete P2M service %s", svc["name"])
         c.del_p2m_service(cluster_id,svc)
-    logger.info("Delete all SIs")
+    logger.info("Get all SIs of cluster")
     all_sis=get_all_sis_of_cluster()
+    logger.info("Delete all SIs of cluster")
     delete_all_unused_sis(all_sis)
+
+def del_config_services_with_sis(flat_services_config):
+    """
+    Delete services listed in configuration file.
+    Only 'name' AND 'type' checked, other fields ignored
+    """
+    sis_to_delete=[]
+    svcs = get_all_services()
+    logger.info("Delete P2P services which name matches template")
+    for svc in svcs['p2p']:
+        for flatsvcitem in flat_services_config:
+            if flatsvcitem['type'] == 'p2p' and flatsvcitem['name'] == svc['name']:
+                sis_to_delete.append(svc['dst'])
+                sis_to_delete.append(svc['src'])
+                if 'reserveSI' in svc.keys():
+                    sis_to_delete.append(svc['reserveSI'])
+                logger.info("Delete P2P service %s" % svc['name'])
+                c.del_p2p_service(cluster_id,svc)
+    logger.info("Delete M2M services which name matches template")
+    for svc in svcs['m2m']:
+        for flatsvcitem in flat_services_config:
+            if flatsvcitem['type'] == 'm2m' and flatsvcitem['name'] == svc['name']:
+                for ifc in svc['rows']:
+                    sis_to_delete.append(ifc['si'])
+                    if 'reserveSI' in ifc.keys():
+                        sis_to_delete.append(ifc['reserveSI'])
+                logger.info("Delete M2M service %s" % svc['name'])
+                c.del_m2m_service(cluster_id, svc)
+    logger.info("Delete P2M services which name matches template")
+    for svc in svcs['p2m']:
+        for flatsvcitem in flat_services_config:
+            if flatsvcitem['type'] == 'p2m' and flatsvcitem['name'] == svc['name']:
+                for ifc in svc['rows']:
+                    sis_to_delete.append(ifc['si'])
+                    if 'reserveSI' in ifc.keys():
+                        sis_to_delete.append(ifc['reserveSI'])
+                logger.info("Delete P2M service %s" % svc['name'])
+                c.del_p2m_service(cluster_id, svc)
+    logger.info("Delete SIs of removed services")
+    delete_sis_by_ids(sis_to_delete)
+    return
+
+
 
 def get_switch_id_by_name(sw_name):
     for switch in switches:
@@ -423,22 +472,21 @@ if __name__ == '__main__':
         logger.info("Validating configuration against controller. No changes enforced")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-    elif action=="clear-all":
+    elif action=="del-all":
         logger.info("REMOVING ALL services and SIs from controller configuration")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
         delete_all_services_with_sis()
     elif action=="del":
         logger.info("REMOVING from controller configuration services and SIs listed in template")
-        logger.info("NOT IMPLEMENTED YET. Does the same as clear-all")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
-        delete_all_services_with_sis()
+        del_config_services_with_sis(flat_cfg)
     elif action=="add":
         logger.info("Adding services and SIs listed in template")
         uniq, flat_cfg = compose_config(config)
         c, cluster_id, qos, switches = validate_cfg_against_controller()
         add_services_with_sis(flat_cfg)
     else:
-        logger.warning("Your arg didn't match any action. Possible actions are\n\n validate\n clear-all\n del\n add\n")
+        logger.warning("Your arg didn't match any action. Possible actions are\n\n del-all  - Remove all configured services and SIs\n del  - Remove all services which name matches template\n add  - Add services from template\n")
 
